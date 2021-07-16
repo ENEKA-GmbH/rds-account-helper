@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Enable AWS CloudTrail. This template creates a CloudTrail trail, an Amazon S3 bucket where logs are published, and an Amazon SNS topic where notifications are sent.
+
+Parameters:
+
+  Prefix:
+    Type: "String"
+    Description: "Prefix for stack"
+
+  UniqueExtension:
+    Type: "String"
+    Description: "Unique Extension"
+
+  ProjectSlug:
+    Type: "String"
+    Description: "Name of Project"
+
+  Environment:
+    Type: "String"
+    Description: "Environment for deployment"
+    AllowedValues:
+      - "development"
+      - "staging"
+      - "production"
+  
+Resources:
+
+  LogKmsKey:
+    Type: "AWS::KMS::Key"
+    Properties:
+      Description: "KMS key for Tail Logs"
+      Enabled: true
+      KeyPolicy:
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "logs.amazonaws.com"
+            Resource: "*"
+            Action:
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:DescribeKey"
+          - Effect: "Allow"
+            Principal: "*"
+            Resource: "*"
+            Action:
+              - "kms:*"
+
+  TrailLog:
+    DeletionPolicy: Delete
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "${Prefix}/global/${UniqueExtension}/trail"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt "LogKmsKey.Arn"
+
+  TrailBucket:
+    DeletionPolicy: Delete
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${Prefix}-${ProjectSlug}-${Environment}-account-service-trail-${UniqueExtension}"
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+
+  TrailCloudWatchIamRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudtrail.amazonaws.com"
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: "MainPolicy"
+          PolicyDocument:
+            Statement:
+              - Action:
+                 - "logs:CreateLogGroup"
+                 - "logs:CreateLogStream"
+                 - "logs:DescribeLogGroups"
+                 - "logs:DescribeLogStreams"
+                 - "logs:PutLogEvents"
+                 - "logs:GetLogEvents"
+                 - "logs:FilterLogEvents"
+                Resource: !GetAtt "TrailLog.Arn"
+                Effect: "Allow"
+
+
+
+
+
+  TrailBucketPolicy:
+    DependsOn:
+      - "TrailLog"
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref "TrailBucket"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: "AWSTrailBucketPermissionsCheck"
+            Effect: Allow
+            Principal:
+              Service:
+                - "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${TrailBucket}"
+          - Sid: "AWSTrailBucketDelivery"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${TrailBucket}/AWSLogs/${AWS::AccountId}/*"
+
+  Trail:
+    Type: "AWS::CloudTrail::Trail"
+    Properties:
+      CloudWatchLogsRoleArn: !GetAtt "TrailCloudWatchIamRole.Arn"
+      CloudWatchLogsLogGroupArn: !GetAtt "TrailLog.Arn"
+      S3BucketName: !Ref "TrailBucket"
+      IsLogging: true
+      EnableLogFileValidation: false
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: true 
+

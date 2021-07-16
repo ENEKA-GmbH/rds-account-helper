@@ -1,0 +1,4 @@
+node_modules/
+parameter_*.json
+parameter.json
+*.swp

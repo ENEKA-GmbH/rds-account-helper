@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Provides an initial Seed Bucket
+
+Parameters:
+
+  Name:
+    Type: "String"
+    Description: "DO NOT USE THIS PARAMETER IN CFN STACK; Its only for deploying"
+
+  Prefix:
+    Type: "String"
+    Description: "Prefix for each Resource"
+  
+  ProjectSlug:
+    Type: "String"
+    Description: "Name of Project"
+
+  Environment:
+    Type: "String"
+    Description: "Environment for deployment"
+    AllowedValues:
+      - "development"
+      - "staging"
+      - "production"
+  
+  SeedStackName:
+    Type: "String"
+    Description: "Name of main-seed stack"
+
+  UniqueExtension:
+    Type: "String"
+    Description: "String to make the resource naming unique"
+
+  FlagCloudTrail:
+    Type: "String"
+    Description: "Activate CloudTrail Deployment"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  FlagAWSBackup:
+    Type: "String"
+    Description: "Activate AWS Backup Plan"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+
+  FlagAWSConfig:
+    Type: "String"
+    Description: "Activate AWS Config Monitorin"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+Conditions:
+
+  FeatureFlagCloudTrail:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagCloudTrail"
+
+
+  FeatureFlagAWSBackup:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagAWSBackup"
+
+
+  FeatureFlagAWSConfig:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagAWSConfig"
+
+
+Resources:
+
+  CloudTrailStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: FeatureFlagCloudTrail
+    Properties: 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/cloudtrail.yml"
+      Parameters:
+        Prefix: !Ref "Prefix"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+        Environment: !Ref "Environment"
