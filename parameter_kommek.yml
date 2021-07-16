@@ -5,6 +5,13 @@ Parameters:
   Environment: "development"
   ProjectSlug: "kommek"
   Name: "account-service"
+
+  GlobalSnsTopicCfn: "arn:aws:sns:eu-central-1:255091093893:global-cfn" 
+  GlobalSnsTopicControlling: "arn:aws:sns:eu-central-1:255091093893:global-controlling"
+  GlobalSnsTopicMonitoring: "arn:aws:sns:eu-central-1:255091093893:global-monitoring"
+  GlobalSnsTopicOps: "arn:aws:sns:eu-central-1:255091093893:global-ops"
+
   FlagCloudTrail: "true"
   FlagAWSBackup: "true"
   FlagAWSConfig: "true"
+

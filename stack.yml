@@ -56,6 +56,22 @@ Parameters:
       - "false"
     Default: "false"
 
+  GlobalSnsTopicCfn:
+    Type: "String"
+    Description: "SNS Topic for Cloudformation Notifications"
+
+  GlobalSnsTopicControlling:
+    Type: "String"
+    Description: "SNS Topic for Controlling Notifications"
+
+  GlobalSnsTopicMonitoring:
+    Type: "String"
+    Description: "SNS Topic for Monitoring Notifications"
+
+  GlobalSnsTopicOps:
+    Type: "String"
+    Description: "SNS Topic for Operation Notifications"
+
 Conditions:
 
   FeatureFlagCloudTrail:
@@ -96,3 +112,31 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
+
+
+Outputs:
+
+  GlobalSnsTopicCfnArn:
+    Value: !Ref "GlobalSnsTopicCfn"
+    Export:
+      Name:
+        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicCfnArn"]]
+
+  GlobalSnsTopicControllingArn:
+    Value: !Ref "GlobalSnsTopicControlling"
+    Export:
+      Name:
+        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicControllingArn"]]
+
+  GlobalSnsTopicMonitoringArn:
+    Value: !Ref "GlobalSnsTopicMonitoring"
+    Export:
+      Name:
+        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicMonitoringArn"]]
+
+  GlobalSnsTopicOpsArn:
+    Value: !Ref "GlobalSnsTopicOps"
+    Export:
+      Name:
+        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicOpsArn"]]
+

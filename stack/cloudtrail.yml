@@ -96,10 +96,6 @@ Resources:
                 Resource: !GetAtt "TrailLog.Arn"
                 Effect: "Allow"
 
-
-
-
-
   TrailBucketPolicy:
     DependsOn:
       - "TrailLog"
