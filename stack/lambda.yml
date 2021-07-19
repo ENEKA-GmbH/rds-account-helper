@@ -1,0 +1,53 @@
+Parameters:
+
+  MainStackName:
+    Type: "String"
+    Description: "Name of Parrent Stack"
+
+  Prefix:
+    Type: "String"
+    Description: "Prefix for each Resource"
+  
+  ProjectSlug:
+    Type: "String"
+    Description: "Name of Project"
+
+  Environment:
+    Type: "String"
+    Description: "Environment for deployment"
+    AllowedValues:
+      - "development"
+      - "staging"
+      - "production"
+  
+  SeedStackName:
+    Type: "String"
+    Description: "Name of main-seed stack"
+
+  UniqueExtension:
+    Type: "String"
+    Description: "String to make the resource naming unique"
+
+
+Resources:
+
+  PymsqlLambdaLayer:
+    Type: "AWS::Lambda::LayerVersion"
+    Properties:
+      Content:
+        S3Bucket:
+          Fn::ImportValue:
+            !Join [ ':', [ !Ref 'SeedStackName', 'SeedBucketName' ]]
+        S3Key: 
+          Fn::Join:
+            - "/"
+            - - !Ref "Prefix" 
+              - !Ref "ProjectSlug"
+              - !Ref "Environment"
+              - !Ref "MainStackName"
+              - !Ref "UniqueExtension"
+              - !Ref "MainStackName"
+              - "build/pymysql-layer.zip"
+      CompatibleRuntimes:
+        - "python3.8"
+

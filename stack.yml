@@ -31,6 +31,7 @@ Parameters:
     Type: "String"
     Description: "String to make the resource naming unique"
 
+
   FlagCloudTrail:
     Type: "String"
     Description: "Activate CloudTrail Deployment"
@@ -56,21 +57,31 @@ Parameters:
       - "false"
     Default: "false"
 
-  GlobalSnsTopicCfn:
+  FlagNotification:
     Type: "String"
-    Description: "SNS Topic for Cloudformation Notifications"
+    Description: "Activate Notification (SNS Topics)"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
-  GlobalSnsTopicControlling:
+  FlagNotificationSlack:
     Type: "String"
-    Description: "SNS Topic for Controlling Notifications"
+    Description: "Add SNS Lambda Subscriber to Slack" 
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
-  GlobalSnsTopicMonitoring:
+  FlagLambdaLayer:
     Type: "String"
-    Description: "SNS Topic for Monitoring Notifications"
+    Description: "Build Lambda Layers which are usefull for multiple reasons"
 
-  GlobalSnsTopicOps:
+  FlagDbmgr:
     Type: "String"
-    Description: "SNS Topic for Operation Notifications"
+    Description: "Add a Custom CFN Resource that allowes to create additional Users on RDS Databases"
+
+
 
 Conditions:
 
@@ -79,6 +90,11 @@ Conditions:
       - "true"
       - !Ref "FlagCloudTrail"
 
+
+  FeatureFlagNotification:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagNotification"
 
   FeatureFlagAWSBackup:
     Fn::Equals:
@@ -91,6 +107,24 @@ Conditions:
       - "true"
       - !Ref "FlagAWSConfig"
 
+  FeatureFlagLambdaLayer:
+    Fn::Or:
+      - Fn::Equals:
+        - "true"
+        - !Ref "FlagLambdaLayer"
+      - Fn::Equals:
+        - "true"
+        - !Ref "FlagDbmgr"
+
+  FeatureFlagNotificationSlack:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagNotificationSlack"
+
+  FeatureFlagDbmgr:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagDbmgr"
 
 Resources:
 
@@ -113,30 +147,74 @@ Resources:
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
 
+  NotificationStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: FeatureFlagNotification
+    Properties: 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/notify.yml"
+      Parameters:
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
+        Prefix: !Ref "Prefix"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+        Environment: !Ref "Environment"
+        FlagNotificationSlack: !Ref "FlagNotificationSlack"
+
+  LambdaLayerStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagLambdaLayer"
+    Properties: 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/lambda.yml"
+      Parameters:
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
+        Prefix: !Ref "Prefix"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+        Environment: !Ref "Environment"
+
+  DbmgrStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagDbmgr"
+    Properties: 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/dbmgr.yml"
+      Parameters:
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
+        Prefix: !Ref "Prefix"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+        Environment: !Ref "Environment"
+
+
+
 
 Outputs:
-
-  GlobalSnsTopicCfnArn:
-    Value: !Ref "GlobalSnsTopicCfn"
-    Export:
-      Name:
-        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicCfnArn"]]
-
-  GlobalSnsTopicControllingArn:
-    Value: !Ref "GlobalSnsTopicControlling"
-    Export:
-      Name:
-        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicControllingArn"]]
-
-  GlobalSnsTopicMonitoringArn:
-    Value: !Ref "GlobalSnsTopicMonitoring"
-    Export:
-      Name:
-        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicMonitoringArn"]]
-
-  GlobalSnsTopicOpsArn:
-    Value: !Ref "GlobalSnsTopicOps"
-    Export:
-      Name:
-        !Join [":", [ !Ref "AWS::StackName", "GlobalSnsTopicOpsArn"]]
-
+  Sns2SlackFunctionName:
+    Condition: "FeatureFlagNotificationSlack"
+    Value: !GetAtt "NotificationStack.Outputs.Sns2SlackFunctionName"

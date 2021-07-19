@@ -1,14 +1,12 @@
 Parameters:
   Prefix: "eneka"
   UniqueExtension: "0000"
-  SeedStackName: "eneka-kommek-development-seed-0000"
+  SeedStackName: "eneka-global-seed-0000"
   Environment: "development"
   ProjectSlug: "kommek"
   Name: "account-service"
 
-  FlagNotification: "true"
   FlagCloudTrail: "true"
   FlagAWSBackup: "true"
   FlagAWSConfig: "true"
-  FlagNotificationSlack: "true"
-  FlagLambdaLayer: "true"
+
