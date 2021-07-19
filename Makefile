@@ -1,6 +1,6 @@
 CURRENT_DIR = $(shell pwd)
 ENV_ENUM := development staging release
-PARAMETER_FILE ?= ""
+PARAMETER_FILE ?= "global"
 
 PROJECT_SLUG := $(shell yq -r .Parameters.ProjectSlug ./parameter_$(PARAMETER_FILE).yml)
 NAME := $(shell yq -r .Parameters.Name ./parameter_$(PARAMETER_FILE).yml)
