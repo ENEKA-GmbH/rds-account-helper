@@ -24,15 +24,64 @@ Parameters:
     Type: "String"
     Description: "Name of main-seed stack"
 
+  InfrastructureStackName:
+    Type: "String"
+    Description: "Name of Infrastructure Stack"
+
+
   UniqueExtension:
     Type: "String"
     Description: "String to make the resource naming unique"
 
-  PymysqlLambdaLayer:
+  PyMysqlLambdaLayer:
     Type: "String"
     Description: "Pymysql lambda layer"
 
 Resources:
+
+
+  DatabaseCredentialApiRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: /
+      Policies:
+        - PolicyName: "CloudWatchLogs"
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:GetLogEvents"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+                Effect: "Allow"
+              - Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DeleteNetworkInterface"
+                Resource: "*"
+                Effect: "Allow"
+        - PolicyName: "SecretAccess"
+          PolicyDocument:
+            Statement:
+              Action: "secretsmanager:*"
+              Effect: "Allow"
+              Resource: "*"
+  
+  DbCredentialsCreateSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Dbmgr Security Group"
+      VpcId: 
+        Fn::ImportValue:
+          !Join [":", [ !Ref "InfrastructureStackName", "VpcId"]]
 
   DbCredentialsCreateLambda:
     Type: "AWS::Lambda::Function"
@@ -56,13 +105,15 @@ Resources:
       Runtime: "python3.7"
       Timeout: 120
       Role: !GetAtt "DatabaseCredentialApiRole.Arn"
-        #VpcConfig:
-        #SubnetIds:
-        #  - !GetAtt "NetworkStack.Outputs.PrivateSubnetOne"
-        #  - !GetAtt "NetworkStack.Outputs.PrivateSubnetTwo"
-        #SecurityGroupIds:
-        #  - !Ref 'DbCredentialsCreateSecurityGroup'
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue:
+              !Join [":", [ !Ref "InfrastructureStackName", "PrivateSubnetOne"]]
+          - Fn::ImportValue:
+              !Join [":", [ !Ref "InfrastructureStackName", "PrivateSubnetTwo"]]
+        SecurityGroupIds:
+          - !Ref 'DbCredentialsCreateSecurityGroup'
       Layers:
-          - !Ref 'PymysqlLambdaLayer'
+          - !Ref 'PyMysqlLambdaLayer'
 
 

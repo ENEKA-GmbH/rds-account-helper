@@ -27,6 +27,10 @@ Parameters:
     Type: "String"
     Description: "Name of main-seed stack"
 
+  InfrastructureStackName:
+    Type: "String"
+    Description: "Name of Infrastructure Stack"
+
   UniqueExtension:
     Type: "String"
     Description: "String to make the resource naming unique"
@@ -90,7 +94,6 @@ Conditions:
       - "true"
       - !Ref "FlagCloudTrail"
 
-
   FeatureFlagNotification:
     Fn::Equals:
       - "true"
@@ -100,7 +103,6 @@ Conditions:
     Fn::Equals:
       - "true"
       - !Ref "FlagAWSBackup"
-
 
   FeatureFlagAWSConfig:
     Fn::Equals:
@@ -210,9 +212,8 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
-
-
-
+        InfrastructureStackName: !Ref "InfrastructureStackName"
+        PyMysqlLambdaLayer: !GetAtt "LambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
 
 Outputs:
   Sns2SlackFunctionName:
