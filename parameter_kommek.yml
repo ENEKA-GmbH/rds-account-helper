@@ -12,3 +12,4 @@ Parameters:
   FlagAWSConfig: "true"
   FlagNotificationSlack: "true"
   FlagLambdaLayer: "true"
+  FlagDbmgr: "false"

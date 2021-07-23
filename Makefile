@@ -19,9 +19,9 @@ STACK_NAME = $(PREFIX)-$(PROJECT_SLUG)-$(ENVIRONMENT)-$(NAME)-$(UNIQUE_EXTENSION
 
 LAMBDA_NAME = $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "Sns2SlackFunctionName").OutputValue')
 
-ifeq ($(filter $(ENVIRONMENT),$(ENV_ENUM)),)
-    $(error $(ENVIRONMENT) ist a valid name for environment. allowed environments are $(ENV_ENUM))
-endif
+#ifeq ($(filter $(ENVIRONMENT),$(ENV_ENUM)),)
+#    $(error $(ENVIRONMENT) ist a valid name for environment. allowed environments are $(ENV_ENUM))
+#endif
 
 
 init:
@@ -81,7 +81,6 @@ update: build-parameter copy
 
 update-lambda: build-sns2slack
 	aws lambda update-function-code --zip-file fileb://$(CURRENT_DIR)/sns2slack.zip --function-name $(LAMBDA_NAME)
-
 
 clean:
 	rm -Rf tmp/
