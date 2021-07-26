@@ -35,6 +35,10 @@ Parameters:
     Type: "String"
     Description: "String to make the resource naming unique"
 
+  CfnNotificationTopicArn:
+    Type: "String"
+    Description: "ARN of cfn Topic"
+    Default: "FALSE"
 
   FlagCloudTrail:
     Type: "String"
@@ -51,7 +55,6 @@ Parameters:
       - "true"
       - "false"
     Default: "false"
-
 
   FlagAWSConfig:
     Type: "String"
@@ -128,12 +131,24 @@ Conditions:
       - "true"
       - !Ref "FlagDbmgr"
 
+  FeatureFlagCfnTopic:
+    Fn::Not:
+      - Fn::Equals:
+        - "FALSE"
+        - !Ref "CfnNotificationTopicArn"
+
+
 Resources:
 
   CloudTrailStack:
     Type: "AWS::CloudFormation::Stack"
     Condition: FeatureFlagCloudTrail
-    Properties: 
+    Properties:
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -153,6 +168,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: FeatureFlagNotification
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -175,6 +195,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagLambdaLayer"
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -196,6 +221,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagDbmgr"
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"

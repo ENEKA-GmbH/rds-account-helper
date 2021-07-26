@@ -19,6 +19,7 @@ STACK_NAME = $(PREFIX)-$(PROJECT_SLUG)-$(ENVIRONMENT)-$(NAME)-$(UNIQUE_EXTENSION
 
 LAMBDA_NAME = $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "Sns2SlackFunctionName").OutputValue')
 
+CFN_NOTIFICATION_TOPIC_ARN = $(shell yq -r .Parameters.CfnNotificationTopicArn ./parameter_$(PARAMETER_FILE).yml)
 #ifeq ($(filter $(ENVIRONMENT),$(ENV_ENUM)),)
 #    $(error $(ENVIRONMENT) ist a valid name for environment. allowed environments are $(ENV_ENUM))
 #endif
@@ -64,6 +65,7 @@ deploy: build-parameter copy
 	aws cloudformation create-stack --stack-name $(STACK_NAME) \
 	--template-body file://$(CURRENT_DIR)/stack.yml \
 	--parameters file://$(CURRENT_DIR)/parameter_$(PARAMETER_FILE).json \
+	--notification-arns $(CFN_NOTIFICATION_TOPIC_ARN) \
 	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
 
 
@@ -75,6 +77,7 @@ update: build-parameter copy
 	aws cloudformation update-stack --stack-name $(STACK_NAME) \
 	--template-body file://$(CURRENT_DIR)/stack.yml \
 	--parameters file://$(CURRENT_DIR)/parameter_$(PARAMETER_FILE).json \
+	--notification-arns $(CFN_NOTIFICATION_TOPIC_ARN) \
 	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM 
 
 
