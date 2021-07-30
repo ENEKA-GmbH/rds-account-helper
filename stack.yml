@@ -27,14 +27,18 @@ Parameters:
     Type: "String"
     Description: "Name of main-seed stack"
 
+  InfrastructureStackName:
+    Type: "String"
+    Description: "Name of Infrastructure Stack"
+
   UniqueExtension:
     Type: "String"
     Description: "String to make the resource naming unique"
 
-  SnsCiDashSubscriberArn:
+  CfnNotificationTopicArn:
     Type: "String"
-    Description: "ARN from lambda of Cidash Stack"
-    Default: ""
+    Description: "ARN of cfn Topic"
+    Default: "FALSE"
 
   FlagCloudTrail:
     Type: "String"
@@ -51,7 +55,6 @@ Parameters:
       - "true"
       - "false"
     Default: "false"
-
 
   FlagAWSConfig:
     Type: "String"
@@ -94,7 +97,6 @@ Conditions:
       - "true"
       - !Ref "FlagCloudTrail"
 
-
   FeatureFlagNotification:
     Fn::Equals:
       - "true"
@@ -104,7 +106,6 @@ Conditions:
     Fn::Equals:
       - "true"
       - !Ref "FlagAWSBackup"
-
 
   FeatureFlagAWSConfig:
     Fn::Equals:
@@ -130,12 +131,24 @@ Conditions:
       - "true"
       - !Ref "FlagDbmgr"
 
+  FeatureFlagCfnTopic:
+    Fn::Not:
+      - Fn::Equals:
+        - "FALSE"
+        - !Ref "CfnNotificationTopicArn"
+
+
 Resources:
 
   CloudTrailStack:
     Type: "AWS::CloudFormation::Stack"
     Condition: FeatureFlagCloudTrail
-    Properties: 
+    Properties:
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -155,6 +168,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: FeatureFlagNotification
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -178,6 +196,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagLambdaLayer"
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -199,6 +222,11 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagDbmgr"
     Properties: 
+      NotificationARNs:
+        - Fn::If:
+          - "FeatureFlagCfnTopic"
+          - !Ref "CfnNotificationTopicArn"
+          - !Ref "AWS::NoValue"
       TemplateURL: 
         Fn::Join:
           - "/"
@@ -215,9 +243,8 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
-
-
-
+        InfrastructureStackName: !Ref "InfrastructureStackName"
+        PyMysqlLambdaLayer: !GetAtt "LambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
 
 Outputs:
   Sns2SlackFunctionName:
