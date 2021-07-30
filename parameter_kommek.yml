@@ -6,6 +6,7 @@ Parameters:
   ProjectSlug: "kommek"
   Name: "account-service"
 
+  SnsCiDashSubscriberArn: "arn:aws:lambda:eu-central-1:396116897933:function:cidash-CollectorFunction-ouRvFF38aYWe"
   FlagNotification: "true"
   FlagCloudTrail: "true"
   FlagAWSBackup: "true"

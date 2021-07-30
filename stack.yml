@@ -31,6 +31,10 @@ Parameters:
     Type: "String"
     Description: "String to make the resource naming unique"
 
+  SnsCiDashSubscriberArn:
+    Type: "String"
+    Description: "ARN from lambda of Cidash Stack"
+    Default: ""
 
   FlagCloudTrail:
     Type: "String"
@@ -167,6 +171,7 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
+        SnsCiDashSubscriberArn: !Ref "SnsCiDashSubscriberArn"
         FlagNotificationSlack: !Ref "FlagNotificationSlack"
 
   LambdaLayerStack:

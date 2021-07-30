@@ -23,6 +23,11 @@ Parameters:
       - "staging"
       - "production"
   
+  SnsCiDashSubscriberArn:
+    Type: "String"
+    Description: "ARN from lambda of Cidash Stack"
+    Default: ""
+
   SeedStackName:
     Type: "String"
     Description: "Name of main-seed stack"
@@ -36,6 +41,12 @@ Parameters:
     Description: "Enable Slack lambda method"
 
 Conditions:
+
+  FeatureFlagCiDash:
+    Fn::Not:
+      Fn::Equals:
+        - ""
+        - !Ref "SnsCiDashSubscriberArn"
 
   FeatureFlagNotificationSlack:
     Fn::Equals:
@@ -121,6 +132,14 @@ Resources:
               Service:
                 - "cloudformation.amazonaws.com"
                 - "budgets.amazonaws.com"
+
+  CiDashSubscription:
+    Condition: "FeatureFlagCiDash"
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Protocol: "lambda"
+      Endpoint: !Ref "SnsCiDashSubscriberArn"
+      TopicArn: !Ref "CfnTopic"
 
   Sns2SlackSubscribtion:
     Condition: "FeatureFlagNotificationSlack"
