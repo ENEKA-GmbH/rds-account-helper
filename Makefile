@@ -121,7 +121,7 @@ build-parameter: makefile_version_check
 	       	tee parameter.json
 
 set-version: makefile_version_check
-	npm version --allow-same-version --no-git --no-git-tag-version $(VERSION)
+	npm  --no-git version --allow-same-version --no-git --no-git-tag-version $(VERSION)
 	echo $(VERSION) > VERSION
 
 

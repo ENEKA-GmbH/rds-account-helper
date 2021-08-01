@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ENEKA-GmbH/aws-mainseed.git"
+    "url": "git+https://github.com/ENEKA-GmbH/aws-account-service.git"
   },
   "author": "",
   "license": "ISC",
