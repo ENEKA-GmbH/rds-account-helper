@@ -120,6 +120,11 @@ build-parameter: makefile_version_check
 		jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' | \
 	       	tee parameter.json
 
+set-version: makefile_version_check
+	npm version --allow-same-version --no-git --no-git-tag-version $(VERSION)
+	echo $(VERSION) > VERSION
+
+
 clean:
 	rm -Rf tmp/
 	rm -Rf build/
