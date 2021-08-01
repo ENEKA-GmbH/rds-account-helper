@@ -169,8 +169,8 @@ Resources:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/cloudtrail.yml"
       Parameters:
@@ -199,8 +199,8 @@ Resources:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/sns2slack.yml"
       Parameters:
@@ -232,8 +232,8 @@ Resources:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/pymysql_lambdalayer.yml"
       Parameters:
@@ -264,8 +264,8 @@ Resources:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/dbmgr.yml"
       Parameters:
@@ -303,8 +303,8 @@ Resources:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/cost_credentials.yml"
       Parameters:
