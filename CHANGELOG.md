@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/ENEKA-GmbH/aws-account-service/compare/v1.0.0...v1.0.1) (2021-08-01)
+
+
+### Bug Fixes
+
+* **cfn-upload:** fix wrong path at CFN Upload ([e82d792](https://github.com/ENEKA-GmbH/aws-account-service/commit/e82d792ef1afd3618756d70c1af27709d2092c03))
+
 # 1.0.0 (2021-08-01)
 
 
