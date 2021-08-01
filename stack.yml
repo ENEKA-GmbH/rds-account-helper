@@ -3,10 +3,6 @@ Description: Provides an initial Seed Bucket
 
 Parameters:
 
-  Name:
-    Type: "String"
-    Description: "DO NOT USE THIS PARAMETER IN CFN STACK; Its only for deploying"
-
   Prefix:
     Type: "String"
     Description: "Prefix for each Resource"
@@ -15,13 +11,19 @@ Parameters:
     Type: "String"
     Description: "Name of Project"
 
+  UniqueExtension:
+    Type: "String"
+    Description: "String to make the resource naming unique"
+
   Environment:
     Type: "String"
     Description: "Environment for deployment"
+    Default: "false"
     AllowedValues:
       - "development"
       - "staging"
       - "production"
+      - "false"
   
   SeedStackName:
     Type: "String"
@@ -29,50 +31,20 @@ Parameters:
 
   InfrastructureStackName:
     Type: "String"
-    Description: "Name of Infrastructure Stack"
-
-  UniqueExtension:
-    Type: "String"
-    Description: "String to make the resource naming unique"
+    Description: "Name of Infrastructure Stack (that provides the network)"
+    Default: "false"
 
   CfnNotificationTopicArn:
     Type: "String"
-    Description: "ARN of cfn Topic"
-    Default: "FALSE"
-
-  FlagCloudTrail:
-    Type: "String"
-    Description: "Activate CloudTrail Deployment"
-    AllowedValues:
-      - "true"
-      - "false"
+    Description: "Cloudformation Notification Topic Arn"
     Default: "false"
 
-  FlagAWSBackup:
+  FlagAutouseCidashNotificationTopic:
     Type: "String"
-    Description: "Activate AWS Backup Plan"
-    AllowedValues:
-      - "true"
-      - "false"
+    Description: "Automatic usage of Cidash SNS Notification Topic"
     Default: "false"
 
-  FlagAWSConfig:
-    Type: "String"
-    Description: "Activate AWS Config Monitorin"
-    AllowedValues:
-      - "true"
-      - "false"
-    Default: "false"
-
-  FlagNotification:
-    Type: "String"
-    Description: "Activate Notification (SNS Topics)"
-    AllowedValues:
-      - "true"
-      - "false"
-    Default: "false"
-
-  FlagNotificationSlack:
+  FeatureFlagSns2Slack:
     Type: "String"
     Description: "Add SNS Lambda Subscriber to Slack" 
     AllowedValues:
@@ -80,82 +52,125 @@ Parameters:
       - "false"
     Default: "false"
 
-  FlagLambdaLayer:
+  FeatureFlagPyMysqlLambdaLayer:
     Type: "String"
-    Description: "Build Lambda Layers which are usefull for multiple reasons"
+    Description: "Create pymysql lambda layer stack" 
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
-  FlagDbmgr:
+  FeatureFlagCloudTrail:
+    Type: "String"
+    Description: "Activate CloudTrail Deployment"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  FeatureFlagDbmgr:
     Type: "String"
     Description: "Add a Custom CFN Resource that allowes to create additional Users on RDS Databases"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
+  FeatureFlagCostCredential:
+    Type: "String"
+    Description: "Creates Credentials for external Monitoring Systems that only allows to get Costs and Billing Information"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
+  PyMysqlLambdaLayerArn:
+    Type: "String"
+    Default: "false"
+    Description: "ARN of PyMysql Lambda Layer. Only needed, if FeatureFlagPyMysqlLambdaLayer is false but FeatureFlagDbmgr is true"
 
 Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
+
+  FlagNotify:
+    Fn::Or:
+      - Fn::Not:
+          - Fn::Equals:
+              - "false"
+              - !Ref "CfnNotificationTopicArn"
+      - Fn::Equals:
+          - "true"
+          - !Ref "FlagAutouseCidashNotificationTopic"
+
+  FlagAutouseCidashNotificationTopic:
+    Fn::Equals:
+      - "true"
+      - !Ref "FlagAutouseCidashNotificationTopic"
+
+  FeatureFlagSns2Slack:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagSns2Slack"
+
+  FeatureFlagPyMysqlLambdaLayer:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagPyMysqlLambdaLayer"
 
   FeatureFlagCloudTrail:
     Fn::Equals:
       - "true"
-      - !Ref "FlagCloudTrail"
-
-  FeatureFlagNotification:
-    Fn::Equals:
-      - "true"
-      - !Ref "FlagNotification"
-
-  FeatureFlagAWSBackup:
-    Fn::Equals:
-      - "true"
-      - !Ref "FlagAWSBackup"
-
-  FeatureFlagAWSConfig:
-    Fn::Equals:
-      - "true"
-      - !Ref "FlagAWSConfig"
-
-  FeatureFlagLambdaLayer:
-    Fn::Or:
-      - Fn::Equals:
-        - "true"
-        - !Ref "FlagLambdaLayer"
-      - Fn::Equals:
-        - "true"
-        - !Ref "FlagDbmgr"
-
-  FeatureFlagNotificationSlack:
-    Fn::Equals:
-      - "true"
-      - !Ref "FlagNotificationSlack"
+      - !Ref "FeatureFlagCloudTrail"
 
   FeatureFlagDbmgr:
     Fn::Equals:
       - "true"
-      - !Ref "FlagDbmgr"
+      - !Ref "FeatureFlagDbmgr"
 
-  FeatureFlagCfnTopic:
-    Fn::Not:
+  FeatureFlagCostCredential:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagCostCredential"
+
+  PyMysqlDependencieDbmgr:
+    Fn::And:
       - Fn::Equals:
-        - "FALSE"
-        - !Ref "CfnNotificationTopicArn"
-
+          - !Ref "FeatureFlagPyMysqlLambdaLayer"
+          - "false"
+      - Fn::Not:
+          - Fn::Equals:
+              - !Ref "FeatureFlagDbmgr"
+              - "false"
 
 Resources:
 
   CloudTrailStack:
     Type: "AWS::CloudFormation::Stack"
-    Condition: FeatureFlagCloudTrail
+    Condition: "FeatureFlagCloudTrail"
     Properties:
       NotificationARNs:
         - Fn::If:
-          - "FeatureFlagCfnTopic"
-          - !Ref "CfnNotificationTopicArn"
-          - !Ref "AWS::NoValue"
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
       TemplateURL: 
         Fn::Join:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
-            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/cloudtrail.yml"
       Parameters:
@@ -164,24 +179,30 @@ Resources:
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
 
-  NotificationStack:
+  Sns2SlackStack:
     Type: "AWS::CloudFormation::Stack"
-    Condition: FeatureFlagNotification
+    Condition: FeatureFlagSns2Slack
     Properties: 
       NotificationARNs:
         - Fn::If:
-          - "FeatureFlagCfnTopic"
-          - !Ref "CfnNotificationTopicArn"
-          - !Ref "AWS::NoValue"
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
       TemplateURL: 
         Fn::Join:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
-            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
-            - "stack/notify.yml"
+            - "stack/sns2slack.yml"
       Parameters:
         MainStackName: !Ref "AWS::StackName"
         SeedStackName: !Ref "SeedStackName"
@@ -189,27 +210,32 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
-        SnsCiDashSubscriberArn: !Ref "SnsCiDashSubscriberArn"
-        FlagNotificationSlack: !Ref "FlagNotificationSlack"
+        CfnNotificationTopicArn: !Ref "CfnNotificationTopicArn"
 
-  LambdaLayerStack:
+  PyMysqlLambdaLayerStack:
     Type: "AWS::CloudFormation::Stack"
-    Condition: "FeatureFlagLambdaLayer"
+    Condition: "FeatureFlagPyMysqlLambdaLayer"
     Properties: 
       NotificationARNs:
         - Fn::If:
-          - "FeatureFlagCfnTopic"
-          - !Ref "CfnNotificationTopicArn"
-          - !Ref "AWS::NoValue"
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
       TemplateURL: 
         Fn::Join:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
-            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
-            - "stack/lambda.yml"
+            - "stack/pymysql_lambdalayer.yml"
       Parameters:
         MainStackName: !Ref "AWS::StackName"
         SeedStackName: !Ref "SeedStackName"
@@ -224,16 +250,22 @@ Resources:
     Properties: 
       NotificationARNs:
         - Fn::If:
-          - "FeatureFlagCfnTopic"
-          - !Ref "CfnNotificationTopicArn"
-          - !Ref "AWS::NoValue"
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
       TemplateURL: 
         Fn::Join:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
                 !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
-            - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
             - "stack/dbmgr.yml"
       Parameters:
@@ -244,9 +276,39 @@ Resources:
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"
         InfrastructureStackName: !Ref "InfrastructureStackName"
-        PyMysqlLambdaLayer: !GetAtt "LambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
+        PyMysqlLambdaLayer:
+          Fn::If:
+            - "PyMysqlDependencieDbmgr"
+            - !Ref "PyMysqlLambdaLayerArn"
+            - !GetAtt "PyMysqlLambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
 
-Outputs:
-  Sns2SlackFunctionName:
-    Condition: "FeatureFlagNotificationSlack"
-    Value: !GetAtt "NotificationStack.Outputs.Sns2SlackFunctionName"
+
+  CostCredentialStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagCostCredential"
+    Properties: 
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "AWS::StackName", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/cost_credentials.yml"
+      Parameters:
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"

@@ -4,9 +4,8 @@ Parameters:
   SeedStackName: "eneka-global-seed-0000"
   Environment: "development"
   ProjectSlug: "kommek"
-  Name: "account-service"
 
-  FlagCloudTrail: "true"
-  FlagAWSBackup: "true"
-  FlagAWSConfig: "true"
-
+  FeatureFlagSns2Slack: "false"
+  FeatureFlagPyMysqlLambdaLayer: "false"
+  FeatureFlagCloudTrail: "false"
+  FeatureFlagDbmgr: "false"

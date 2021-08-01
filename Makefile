@@ -1,28 +1,59 @@
+MAKEFILE_VERSION := 2021-07-30--03
+MAKEFILE_VERSION_CHECK := yes
+REMOTE_VERSION := $(shell curl -s "https://gist.githubusercontent.com/eieste/3c421b77254895ebfc516d493c06518a/raw/VERSION")
+
+ifndef VERBOSE
+.SILENT:
+endif
+
+NAME := account-service
+
 CURRENT_DIR = $(shell pwd)
-ENV_ENUM := development staging release
-PARAMETER_FILE ?= "global"
+PARAMETER_FILE ?= "global.yml"
 
-PROJECT_SLUG := $(shell yq -r .Parameters.ProjectSlug ./parameter_$(PARAMETER_FILE).yml)
-NAME := $(shell yq -r .Parameters.Name ./parameter_$(PARAMETER_FILE).yml)
-SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameter_$(PARAMETER_FILE).yml)
+UNIQUE_EXTENSION := $(shell yq -r '.Parameters.UniqueExtension' ./parameters/$(PARAMETER_FILE))
+PREFIX := $(shell yq -r '.Parameters.Prefix' ./parameters/$(PARAMETER_FILE))
+PROJECT_SLUG := $(shell yq -r '.Parameters.ProjectSlug' ./parameters/$(PARAMETER_FILE))
+
+
+SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameters/$(PARAMETER_FILE))
 SEED_BUCKET_NAME := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
-CFN_ROLE := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "CloudformationRoleArn").OutputValue')
+
+ENVIRONMENT := $(shell yq -r '.Parameters | if has("Environment") then .Environment else "FALSE" end' ./parameters/$(PARAMETER_FILE))
+ifeq ($(ENVIRONMENT), FALSE)
+	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(NAME)-$(UNIQUE_EXTENSION)
+	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(STACK_NAME)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
+else
+	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(ENVIRONMENT)-$(NAME)-$(UNIQUE_EXTENSION)
+	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(ENVIRONMENT)/$(STACK_NAME)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
+endif
 
 
-GLOBAL_SNS_TOPIC_CFN_ARN = $(shell yq -r .Parameters.GlobalSnsTopicCfn ./parameter_$(PARAMETER_FILE).yml)
-UNIQUE_EXTENSION := $(shell yq -r .Parameters.UniqueExtension  ./parameter_$(PARAMETER_FILE).yml)
-ENVIRONMENT := $(shell yq -r .Parameters.Environment  ./parameter_$(PARAMETER_FILE).yml)
+.SILENT:
 
-PREFIX := $(shell yq -r .Parameters.Prefix  ./parameter_$(PARAMETER_FILE).yml)
 
-STACK_NAME = $(PREFIX)-$(PROJECT_SLUG)-$(ENVIRONMENT)-$(NAME)-$(UNIQUE_EXTENSION)
+CIDASH_TOPIC_ARN := $(shell aws cloudformation list-exports | jq -r '.Exports[] | select(.Name == "cidashTopicArn") | .Value' - )
 
-LAMBDA_NAME = $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "Sns2SlackFunctionName").OutputValue')
+NOTIFICATION_TOPIC_ARN ?= $(shell yq -r '.Parameters | if has("CfnNotificationTopicArn") then .CfnNotificationTopicArn else "$(CIDASH_TOPIC_ARN)" end' ./parameters/$(PARAMETER_FILE) )
 
-CFN_NOTIFICATION_TOPIC_ARN = $(shell yq -r .Parameters.CfnNotificationTopicArn ./parameter_$(PARAMETER_FILE).yml)
-#ifeq ($(filter $(ENVIRONMENT),$(ENV_ENUM)),)
-#    $(error $(ENVIRONMENT) ist a valid name for environment. allowed environments are $(ENV_ENUM))
-#endif
+ifeq ($(NOTIFICATION_TOPIC_ARN), )
+	NOTIFICATION_PARAEMETER :=
+else
+	NOTIFICATION_PARAMETER := --notification-arns $(NOTIFICATION_TOPIC_ARN)
+endif
+
+
+AWS_STACK_PARAMETER := --stack-name $(STACK_NAME) \
+	--template-body file://$(CURRENT_DIR)/stack.yml \
+	--parameters file://$(CURRENT_DIR)/parameter.json $(NOTIFICATION_PARAMETER) \
+	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
+
+makefile_version_check:
+ifeq ($(MAKEFILE_VERSION_CHECK), yes)
+ifneq ($(MAKEFILE_VERSION), $(REMOTE_VERSION))
+	@echo "Remote Version ( $(REMOTE_VERSION) ) doesnt match with Local Version ( $(MAKEFILE_VERSION) )"
+endif
+endif
 
 init:
 	npm install -y
@@ -30,9 +61,12 @@ init:
 
 
 validate:
-	aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack.yml
-	aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/cloudtrail.yml
-	yamllint ./parameter_kommek.yml
+	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack.yml
+	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/cloudtrail.yml
+	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/dbmgr.yml
+	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/sns2slack.yml
+	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/pymysql_lambdalayer.yml
+	yamllint ./parameters/*.yml
 
 
 build: build-pymysql-layer build-dbmgr build-sns2slack
@@ -58,31 +92,33 @@ build-sns2slack:
 	mkdir -p build/
 	cd sns2slack/; zip -r ../build/sns2slack.zip ./*
 
-copy: build 
-	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" ./ s3://$(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(ENVIRONMENT)/$(STACK_NAME)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
+copy:
+	echo $(UPLOAD_PATH)
+	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" ./ s3://$(UPLOAD_PATH)
 
-deploy: build-parameter copy
-	aws cloudformation create-stack --stack-name $(STACK_NAME) \
-	--template-body file://$(CURRENT_DIR)/stack.yml \
-	--parameters file://$(CURRENT_DIR)/parameter_$(PARAMETER_FILE).json \
-	--notification-arns $(CFN_NOTIFICATION_TOPIC_ARN) \
-	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
+deploy: makefile_version_check build build-parameter copy
+	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
+deploy-only: build-parameter copy
+	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-build-parameter:
-	cat parameter_$(PARAMETER_FILE).yml | yq .Parameters | jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' |  tee parameter_$(PARAMETER_FILE).json
+update: makefile_version_check build build-parameter copy
+	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
+update-only: makefile_version_check build-parameter copy
+	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
-update: build-parameter copy
-	aws cloudformation update-stack --stack-name $(STACK_NAME) \
-	--template-body file://$(CURRENT_DIR)/stack.yml \
-	--parameters file://$(CURRENT_DIR)/parameter_$(PARAMETER_FILE).json \
-	--notification-arns $(CFN_NOTIFICATION_TOPIC_ARN) \
-	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM 
+remove: makefile_version_check makefile_version_check
+	aws cloudformation delete-stack --stack-name $(STACK_NAME)
 
-
-update-lambda: build-sns2slack
+update-lambda: makefile_version_check build-sns2slack
 	aws lambda update-function-code --zip-file fileb://$(CURRENT_DIR)/sns2slack.zip --function-name $(LAMBDA_NAME)
+
+build-parameter: makefile_version_check
+	cat parameters/$(PARAMETER_FILE) | \
+	       	yq .Parameters | \
+		jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' | \
+	       	tee parameter.json
 
 clean:
 	rm -Rf tmp/

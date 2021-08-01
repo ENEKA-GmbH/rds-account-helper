@@ -28,7 +28,6 @@ Parameters:
     Type: "String"
     Description: "Name of Infrastructure Stack"
 
-
   UniqueExtension:
     Type: "String"
     Description: "String to make the resource naming unique"

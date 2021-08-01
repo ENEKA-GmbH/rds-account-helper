@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Enable AWS Config with central logging and notification
+
+Parameters:
+
+  MainStackName:
+    Type: "String"
+    Description: "Name of Parent Stack"
+
+  Prefix:
+    Type: "String"
+    Description: "Prefix for each Resource"
+  
+  ProjectSlug:
+    Type: "String"
+    Description: "Name of Project"
+
+  Environment:
+    Type: "String"
+    Description: "Environment for deployment"
+    AllowedValues:
+      - "development"
+      - "staging"
+      - "production"
+      - "false"
+  
+  UniqueExtension:
+    Type: "String"
+    Description: "String to make the resource naming unique"
+
+
+  SeedStackName:
+    Type: "String"
+    Description: "Name of main-seed stack"
+
+  UniqueExtension:
+    Type: "String"
+    Description: "String to make the resource naming unique"
+
+  CfnNotificationTopicArn:
+    Type: "String"
+    Description: "Cloudformation Notification Topic Arn"
+    Default: "false"
+
+Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
+Resources:
+
+  Sns2SlackSubscribtion:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Protocol: "lambda"
+      Endpoint: !GetAtt "Sns2SlackFunction.Arn"
+      TopicArn: !Ref "CfnNotificationTopicArn"
+
+  Sns2SlackInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties: 
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref "Sns2SlackFunction"
+      SourceArn: !Ref "CfnNotificationTopicArn"
+      Principal: "sns.amazonaws.com"
+
+  Sns2SlackSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name:
+        Fn::If:
+          - "HasEnvironment"
+          - Fn::Join:
+              - "/"
+              - - !Ref "Prefix"
+                - !Ref "ProjectSlug"
+                - !Ref "Environment"
+                - !Sub "sns2slack-${UniqueExtension}"
+          - Fn::Join:
+              - "/"
+              - - !Ref "Prefix"
+                - !Ref "ProjectSlug"
+                - !Sub "sns2slack-${UniqueExtension}"
+      SecretString: |
+        {
+          "slack_token": "",
+          "slack_channel": "cfn=eneka-dev:eneka-dev",
+          "allowed_cfn_states": "CREATE_COMPLETE;CREATE_FAILED;DELETE_COMPLETE;DELETE_FAILED;UPDATE_FAILED;UPDATE_ROLLBACK_COMPLETE;UPDATE_COMPLETE",
+          "slack_username": "DevOpsBot"
+        }
+    
+  Sns2SlackFunctionIamRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service:
+            - "lambda.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: "Allow"
+            Action:
+            - "logs:*"
+            Resource: "arn:aws:logs:*:*:*"
+          - Effect: "Allow"
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource:
+              - !Ref "Sns2SlackSecret"
+
+  Sns2SlackFunction: 
+    Type: "AWS::Lambda::Function"
+    Properties: 
+      Code:
+        S3Bucket:
+          Fn::ImportValue:
+            !Join [":", [!Ref "SeedStackName", "SeedBucketName"]]
+        S3Key:
+          Fn::If:
+            - "HasEnvironment"
+            - !Join [ "/", [!Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "MainStackName", !Ref "UniqueExtension", !Ref "MainStackName", "build", "sns2slack.zip" ]] 
+            - !Join [ "/", [!Ref "Prefix", !Ref "ProjectSlug", !Ref "MainStackName", !Ref "UniqueExtension", !Ref "MainStackName", "build", "sns2slack.zip" ]]
+          #FunctionName: "sns2slack"
+      Environment:
+        Variables:
+          SecretName: !Ref "Sns2SlackSecret"
+          AwsRegion: !Ref "AWS::Region"
+      Handler: "main.lambda_handler"
+      MemorySize: 128
+      PackageType: "Zip"
+        #ReservedConcurrentExecutions: Integer
+      Role: !GetAtt "Sns2SlackFunctionIamRole.Arn"
+      Runtime: "python3.8"
+      Timeout: 5 
+
+
+Outputs:
+  Sns2SlackFunctionName:
+    Value: !Ref "Sns2SlackFunction"
+    Export:
+      Name: !Join [":", [!Ref "MainStackName", "Sns2SlackFunctionName"]]

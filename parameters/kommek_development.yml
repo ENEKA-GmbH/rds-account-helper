@@ -1,0 +1,12 @@
+Parameters:
+  Prefix: "eneka"
+  UniqueExtension: "0000"
+  SeedStackName: "eneka-kommek-development-seed-0000"
+  ProjectSlug: "kommek"
+
+  FeatureFlagSns2Slack: "false"
+  FeatureFlagPyMysqlLambdaLayer: "true"
+  FeatureFlagCloudTrail: "true"
+  FeatureFlagDbmgr: "true"
+
+  FlagAutouseCidashNotificationTopic: "true"
