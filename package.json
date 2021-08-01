@@ -1,5 +1,5 @@
 {
-  "name": "aws-mainseed",
+  "name": "aws-account-service",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -25,6 +25,7 @@
     "semantic-release": "^17.4.4"
   },
   "dependencies": {
+    "@semantic-release/exec": "^5.0.0",
     "commitizen": "^4.2.4",
     "yaml-lint": "^1.2.4"
   },
