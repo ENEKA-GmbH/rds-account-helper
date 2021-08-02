@@ -2,7 +2,7 @@ Parameters:
   Prefix: "eneka"
   UniqueExtension: "0000"
   SeedStackName: "eneka-main-seed-0000"
-  ProjectSlug: "kommek"
+  ProjectSlug: "main"
 
   FeatureFlagSns2Slack: "false"
   FeatureFlagPyMysqlLambdaLayer: "false"

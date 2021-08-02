@@ -306,7 +306,7 @@ Resources:
                 - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
                 - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
-            - "stack/cost_credentials.yml"
+            - "stack/cost_credential.yml"
       Parameters:
         MainStackName: !Ref "AWS::StackName"
         SeedStackName: !Ref "SeedStackName"
