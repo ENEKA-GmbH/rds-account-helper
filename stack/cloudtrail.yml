@@ -22,7 +22,17 @@ Parameters:
       - "development"
       - "staging"
       - "production"
+      - "false"
   
+Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
+
+
 Resources:
 
   LogKmsKey:
@@ -62,7 +72,11 @@ Resources:
     DeletionPolicy: Delete
     Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: !Sub "${Prefix}-${ProjectSlug}-${Environment}-account-service-trail-${UniqueExtension}"
+      BucketName:
+        Fn::If:
+          - "HasEnvironment"
+          - !Sub "${Prefix}-${ProjectSlug}-${Environment}-account-service-trail-${UniqueExtension}"
+          - !Sub "${Prefix}-${ProjectSlug}-account-service-trail-${UniqueExtension}"
       BucketEncryption:
           ServerSideEncryptionConfiguration:
             - ServerSideEncryptionByDefault:

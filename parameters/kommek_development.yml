@@ -3,6 +3,7 @@ Parameters:
   UniqueExtension: "0000"
   SeedStackName: "eneka-kommek-development-seed-0000"
   ProjectSlug: "kommek"
+  Environment: "development"
 
   FeatureFlagSns2Slack: "false"
   FeatureFlagPyMysqlLambdaLayer: "true"

@@ -19,6 +19,7 @@ Parameters:
       - "development"
       - "staging"
       - "production"
+      - "false"
   
   SeedStackName:
     Type: "String"
@@ -35,6 +36,15 @@ Parameters:
   PyMysqlLambdaLayer:
     Type: "String"
     Description: "Pymysql lambda layer"
+
+Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
+
 
 Resources:
 
@@ -90,16 +100,24 @@ Resources:
         S3Bucket:
           Fn::ImportValue:
             !Join [ ':', [ !Ref 'SeedStackName', 'SeedBucketName' ]]
-        S3Key: 
-          Fn::Join:
-            - "/"
-            - - !Ref "Prefix" 
-              - !Ref "ProjectSlug"
-              - !Ref "Environment"
-              - !Ref "MainStackName"
-              - !Ref "UniqueExtension"
-              - !Ref "MainStackName"
-              - "build/dbmgr.zip"
+        S3Key:
+          Fn::If:
+            - "HasEnvironment"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "Environment"
+                  - !Ref "UniqueExtension"
+                  - !Ref "MainStackName"
+                  - "build/dbmgr.zip"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "UniqueExtension"
+                  - !Ref "MainStackName"
+                  - "build/dbmgr.zip"
       Handler: "index.handler"
       Runtime: "python3.7"
       Timeout: 120

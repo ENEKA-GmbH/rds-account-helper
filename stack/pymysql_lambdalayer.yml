@@ -19,6 +19,7 @@ Parameters:
       - "development"
       - "staging"
       - "production"
+      - "false"
   
   SeedStackName:
     Type: "String"
@@ -28,6 +29,13 @@ Parameters:
     Type: "String"
     Description: "String to make the resource naming unique"
 
+Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
 
 Resources:
 
@@ -38,16 +46,24 @@ Resources:
         S3Bucket:
           Fn::ImportValue:
             !Join [ ':', [ !Ref 'SeedStackName', 'SeedBucketName' ]]
-        S3Key: 
-          Fn::Join:
-            - "/"
-            - - !Ref "Prefix" 
-              - !Ref "ProjectSlug"
-              - !Ref "Environment"
-              - !Ref "MainStackName"
-              - !Ref "UniqueExtension"
-              - !Ref "MainStackName"
-              - "build/pymysql-layer.zip"
+        S3Key:
+          Fn::If:
+            - "HasEnvironment"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "Environment"
+                  - !Ref "UniqueExtension"
+                  - !Ref "MainStackName"
+                  - "build/pymysql-layer.zip"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "UniqueExtension"
+                  - !Ref "MainStackName"
+                  - "build/pymysql-layer.zip"
       CompatibleRuntimes:
         - "python3.8"
 
