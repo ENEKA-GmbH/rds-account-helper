@@ -4,7 +4,7 @@ Parameters:
   SeedStackName: "eneka-kommek-development-seed-0000"
   ProjectSlug: "kommek"
   Environment: "development"
-
+  InfrastructureStackName: "eneka-kommek-development-infrastructure-0000"
   FeatureFlagSns2Slack: "false"
   FeatureFlagPyMysqlLambdaLayer: "true"
   FeatureFlagCloudTrail: "true"

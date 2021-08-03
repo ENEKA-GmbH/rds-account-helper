@@ -240,9 +240,9 @@ Resources:
         MainStackName: !Ref "AWS::StackName"
         SeedStackName: !Ref "SeedStackName"
         Prefix: !Ref "Prefix"
+        Environment: !Ref "Environment"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
-        Environment: !Ref "Environment"
 
   DbmgrStack:
     Type: "AWS::CloudFormation::Stack"
