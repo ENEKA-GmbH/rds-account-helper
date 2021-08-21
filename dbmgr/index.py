@@ -7,6 +7,7 @@ import botocore
 import random
 import string
 import logging
+import time
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
@@ -96,7 +97,7 @@ def openConnection(host, username, password):
         except pymysql.err.OperationalError:
             log.info("Connection failed. Try again {}".format(trys))
         trys = trys + 1
-
+        time.sleep(1)
     return conn
 
 

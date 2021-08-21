@@ -282,7 +282,6 @@ Resources:
             - !Ref "PyMysqlLambdaLayerArn"
             - !GetAtt "PyMysqlLambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
 
-
   CostCredentialStack:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagCostCredential"

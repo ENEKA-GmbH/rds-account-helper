@@ -1,3 +1,4 @@
+
 Parameters:
 
   MainStackName:
@@ -7,7 +8,7 @@ Parameters:
   Prefix:
     Type: "String"
     Description: "Prefix for each Resource"
-  
+
   ProjectSlug:
     Type: "String"
     Description: "Name of Project"
@@ -20,7 +21,7 @@ Parameters:
       - "staging"
       - "production"
       - "false"
-  
+
   SeedStackName:
     Type: "String"
     Description: "Name of main-seed stack"
@@ -45,9 +46,7 @@ Conditions:
           - "false"
           - !Ref "Environment"
 
-
 Resources:
-
 
   DatabaseCredentialApiRole:
     Type: "AWS::IAM::Role"
@@ -83,7 +82,7 @@ Resources:
               Action: "secretsmanager:*"
               Effect: "Allow"
               Resource: "*"
-  
+ 
   DbCredentialsCreateSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
@@ -131,6 +130,22 @@ Resources:
         SecurityGroupIds:
           - !Ref 'DbCredentialsCreateSecurityGroup'
       Layers:
-          - !Ref 'PyMysqlLambdaLayer'
+        - !Ref 'PyMysqlLambdaLayer'
 
+Outputs:
+
+  DatabaseManagerArn:
+    Value: !GetAtt "DbCredentialsCreateLambda.Arn"
+    Export:
+      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "DatabaseManagerArn" ] ]
+
+  DatabaseManagerSecurityGroupId:
+    Value: !Ref "DbCredentialsCreateSecurityGroup"
+    Export:
+      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "DatabaseManagerSecurityGroupId" ] ] 
+
+  DatabaseManagerIamRoleArn:
+    Value: !Ref "DatabaseCredentialApiRole"
+    Export:
+      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "DatabaseManagerIamRoleArn" ] ]
 
