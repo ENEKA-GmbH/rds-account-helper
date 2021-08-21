@@ -2,10 +2,11 @@ Parameters:
   Prefix: "eneka"
   UniqueExtension: "0000"
   SeedStackName: "eneka-global-seed-0000"
-  Environment: "development"
-  ProjectSlug: "kommek"
+  ProjectSlug: "global"
 
   FeatureFlagSns2Slack: "false"
   FeatureFlagPyMysqlLambdaLayer: "false"
-  FeatureFlagCloudTrail: "false"
   FeatureFlagDbmgr: "false"
+  FeatureFlagCloudTrail: "true"
+
+  FlagAutouseCidashNotificationTopic: "true"

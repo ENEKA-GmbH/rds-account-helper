@@ -68,6 +68,14 @@ Parameters:
       - "false"
     Default: "false"
 
+  FeatureFlagAwsConfig:
+    Type: "String"
+    Description: "Activate AWS-Config Tracking"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
   FeatureFlagDbmgr:
     Type: "String"
     Description: "Add a Custom CFN Resource that allowes to create additional Users on RDS Databases"
@@ -127,6 +135,11 @@ Conditions:
       - "true"
       - !Ref "FeatureFlagCloudTrail"
 
+  FeatureFlagAwsConfig:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagAwsConfig"
+
   FeatureFlagDbmgr:
     Fn::Equals:
       - "true"
@@ -175,6 +188,38 @@ Resources:
             - "stack/cloudtrail.yml"
       Parameters:
         Prefix: !Ref "Prefix"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+        Environment: !Ref "Environment"
+
+  AwsConfigStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagAwsConfig"
+    Properties:
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/config.yml"
+      Parameters:
+        Prefix: !Ref "Prefix"
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
         Environment: !Ref "Environment"

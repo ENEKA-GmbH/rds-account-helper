@@ -64,7 +64,11 @@ Resources:
     DeletionPolicy: Delete
     Type: "AWS::Logs::LogGroup"
     Properties:
-      LogGroupName: !Sub "${Prefix}/global/${UniqueExtension}/trail"
+      LogGroupName:
+        Fn::If:
+          - "HasEnvironment"
+          - !Sub "${Prefix}/${ProjectSlug}/${Environment}/${UniqueExtension}/trail"
+          - !Sub "${Prefix}/${ProjectSlug}/${UniqueExtension}/trail"
       RetentionInDays: 7
       KmsKeyId: !GetAtt "LogKmsKey.Arn"
 
@@ -117,7 +121,7 @@ Resources:
     Properties:
       Bucket: !Ref "TrailBucket"
       PolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Sid: "AWSTrailBucketPermissionsCheck"
             Effect: Allow

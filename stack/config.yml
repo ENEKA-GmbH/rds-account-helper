@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+
+Parameters:
+
+  Prefix:
+    Type: "String"
+    Description: "Prefix for stack"
+
+  UniqueExtension:
+    Type: "String"
+    Description: "Unique Extension"
+
+  ProjectSlug:
+    Type: "String"
+    Description: "Name of Project"
+
+  Environment:
+    Type: "String"
+    Description: "Environment for deployment"
+    AllowedValues:
+      - "development"
+      - "staging"
+      - "production"
+      - "false"
+  
+  SeedStackName:
+    Type: "String"
+    Description: "Name of main-seed stack"
+
+  MainStackName:
+    Type: "String"
+    Description: "Name of Parent Stack"
+  
+Conditions:
+
+  HasEnvironment:
+    Fn::Not:
+      - Fn::Equals:
+          - "false"
+          - !Ref "Environment"
+
+  alwaysFalse:
+    Fn::Equals:
+      - "false"
+      - "true"
+
+Resources:
+
+  ConfigKey:
+    Type: "AWS::KMS::Key"
+    Properties: 
+      Enabled: true
+      KeyPolicy:
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: 
+                - "config.amazonaws.com"
+            Resource: "*"
+            Action:
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:DescribeKey"
+          - Effect: "Allow"
+            Principal: "*"
+            Resource: "*"
+            Action:
+              - "kms:*"
+      PendingWindowInDays: 7 
+
+  ConfigBucket:
+    DeletionPolicy: "Retain"
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: !Ref "ConfigKey"
+
+  ConfigBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref "ConfigBucket"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "AWSConfigBucketPermissionsCheck"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "config.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${ConfigBucket}"
+          - Sid: "AWSConfigBucketDelivery"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "config.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${ConfigBucket}/AWSLogs/${AWS::AccountId}/*"
+
+
+
+  ConfigRecorderRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "config.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWS_ConfigRole"
+
+  ConfigRecorder:
+    Type: "AWS::Config::ConfigurationRecorder"
+    DependsOn:
+      - "ConfigBucketPolicy"
+    Properties:
+      RoleARN: !GetAtt "ConfigRecorderRole.Arn"
+      RecordingGroup:
+        AllSupported: "true"
+        IncludeGlobalResourceTypes: "true"
+
+  ConfigDeliveryChannel:
+    Type: "AWS::Config::DeliveryChannel"
+    Properties:
+      ConfigSnapshotDeliveryProperties: 
+        DeliveryFrequency: "TwentyFour_Hours"
+      S3BucketName: !Ref "ConfigBucket"
+
+  ConfigConformancePack:
+    Condition: "alwaysFalse"
+    Type: "AWS::Config::OrganizationConformancePack"
+    Properties:
+      OrganizationConformancePackName: BestPractices4Ec2
+      TemplateS3Uri:
+        Fn::Join:
+          - "/"
+          - - "s3:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketName"]]
+            - Fn::If:
+              - "HasEnvironment"
+              - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+              - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+            - !Ref "MainStackName"
+            - "conformance-pack/Operational-Best-Practices-for-EC2.yaml"

@@ -9,5 +9,7 @@ Parameters:
   FeatureFlagCloudTrail: "false"
   FeatureFlagDbmgr: "false"
   FeatureFlagCostCredential: "true"
+  FeatureFlagAwsConfig: "true"
 
   FlagAutouseCidashNotificationTopic: "true"
+  

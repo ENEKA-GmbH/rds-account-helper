@@ -1,4 +1,4 @@
-MAKEFILE_VERSION := 2021-07-30--03
+MAKEFILE_VERSION := 2021-08-17--01
 MAKEFILE_VERSION_CHECK := yes
 REMOTE_VERSION := $(shell curl -s "https://gist.githubusercontent.com/eieste/3c421b77254895ebfc516d493c06518a/raw/VERSION")
 
@@ -9,18 +9,30 @@ endif
 NAME := account-service
 
 CURRENT_DIR = $(shell pwd)
-PARAMETER_FILE ?= "global.yml"
+PARAMETER_FILE ?=
+PARAM_CHECK ?= $(PARAMETER_FILE)
 
-UNIQUE_EXTENSION := $(shell yq -r '.Parameters.UniqueExtension' ./parameters/$(PARAMETER_FILE))
-PREFIX := $(shell yq -r '.Parameters.Prefix' ./parameters/$(PARAMETER_FILE))
-PROJECT_SLUG := $(shell yq -r '.Parameters.ProjectSlug' ./parameters/$(PARAMETER_FILE))
+VALIDATION_CFN_IGNORE := -i W2001
 
+ifneq (, $(PARAM_CHECK))
+	UNIQUE_EXTENSION := $(shell yq -r '.Parameters.UniqueExtension' ./parameters/$(PARAMETER_FILE))
+	PREFIX := $(shell yq -r '.Parameters.Prefix' ./parameters/$(PARAMETER_FILE))
+	PROJECT_SLUG := $(shell yq -r '.Parameters.ProjectSlug' ./parameters/$(PARAMETER_FILE))
+	SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameters/$(PARAMETER_FILE))
+	SEED_BUCKET_NAME := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
+	ENVIRONMENT := $(shell yq -r '.Parameters | if has("Environment") then .Environment else "false" end' ./parameters/$(PARAMETER_FILE))
+	CIDASH_TOPIC_ARN := $(shell aws cloudformation list-exports | jq -r '.Exports[] | select(.Name == "cidashTopicArn") | .Value' - )
+	NOTIFICATION_TOPIC_ARN ?= $(shell yq -r '.Parameters | if has("CfnNotificationTopicArn") then .CfnNotificationTopicArn else "$(CIDASH_TOPIC_ARN)" end' ./parameters/$(PARAMETER_FILE) )
+else
+	UNIQUE_EXTENSION :=
+	PREFIX :=
+	PROJECT_SLUG :=
+	ENVIRONMENT := 
+	CIDASH_TOPIC_ARN :=
+	NOTIFICATION_TOPIC_ARN ?=
+endif
 
-SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameters/$(PARAMETER_FILE))
-SEED_BUCKET_NAME := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
-
-ENVIRONMENT := $(shell yq -r '.Parameters | if has("Environment") then .Environment else "FALSE" end' ./parameters/$(PARAMETER_FILE))
-ifeq ($(ENVIRONMENT), FALSE)
+ifeq ($(ENVIRONMENT), false)
 	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(NAME)-$(UNIQUE_EXTENSION)
 	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
 else
@@ -31,10 +43,6 @@ endif
 
 .SILENT:
 
-
-CIDASH_TOPIC_ARN := $(shell aws cloudformation list-exports | jq -r '.Exports[] | select(.Name == "cidashTopicArn") | .Value' - )
-
-NOTIFICATION_TOPIC_ARN ?= $(shell yq -r '.Parameters | if has("CfnNotificationTopicArn") then .CfnNotificationTopicArn else "$(CIDASH_TOPIC_ARN)" end' ./parameters/$(PARAMETER_FILE) )
 
 ifeq ($(NOTIFICATION_TOPIC_ARN), )
 	NOTIFICATION_PARAEMETER :=
@@ -60,14 +68,11 @@ init:
 	./node_modules/.bin/husky install
 
 
-validate:
-	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack.yml
-	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/cloudtrail.yml
-	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/dbmgr.yml
-	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/sns2slack.yml
-	@aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/stack/pymysql_lambdalayer.yml
-	yamllint ./parameters/*.yml
-
+validate: makefile_version_check
+	yamllint parameters/*.yml
+	for file in stack.yml stack/cloudtrail.yml stack/dbmgr.yml stack/sns2slack.yml stack/pymysql_lambdalayer.yml ; do \
+		cfn-lint $(VALIDATION_CFN_IGNORE) -t $(CURRENT_DIR)/$$file; \
+	done
 
 build: build-pymysql-layer build-dbmgr build-sns2slack
 
@@ -96,13 +101,13 @@ copy:
 	echo $(UPLOAD_PATH)
 	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" ./ s3://$(UPLOAD_PATH)
 
-deploy: makefile_version_check build build-parameter copy
+deploy: makefile_version_check build build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
 deploy-only: build-parameter copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-update: makefile_version_check build build-parameter copy
+update: makefile_version_check build build-parameter validate copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
 update-only: makefile_version_check build-parameter copy
