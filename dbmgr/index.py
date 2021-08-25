@@ -87,17 +87,17 @@ def openConnection(host, username, password):
 
     conn = None
     trys = 0
-    while trys <= 5 and conn is None:
+    while trys < 3 and conn is None:
         try:
             log.info("Try to open rds Connection")
             if conn is None:
                 conn = pymysql.connect(host=host, user=username, password=password, connect_timeout=10, cursorclass=pymysql.cursors.DictCursor)
                 log.info("Connection established")
                 return conn
-        except pymysql.err.OperationalError:
+        except pymysql.err.OperationalError as e:
             log.info("Connection failed. Try again {}".format(trys))
+            log.exception(e)
         trys = trys + 1
-        time.sleep(1)
     return conn
 
 
