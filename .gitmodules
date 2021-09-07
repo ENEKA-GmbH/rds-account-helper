@@ -1,0 +1,3 @@
+[submodule "rah"]
+	path = rah
+	url = git@github.com:ENEKA-GmbH/rds-account-helper.git
