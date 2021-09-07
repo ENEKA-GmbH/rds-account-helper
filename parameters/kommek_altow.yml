@@ -1,14 +1,15 @@
 Parameters:
   Prefix: "eneka"
-  UniqueExtension: "0000"
-  SeedStackName: "eneka-kommek-development-seed-0000"
+  UniqueExtension: "9999"
+  SeedStackName: "eneka-kommek-staging-seed-9999"
   ProjectSlug: "kommek"
-  Environment: "development"
-  InfrastructureStackName: "eneka-kommek-development-infrastructure-0000"
+  Environment: "staging"
+  InfrastructureStackName: "eneka-kommek-staging-infrastructure-9999"
   FeatureFlagSns2Slack: "false"
   FeatureFlagMysqlLambdaLayer: "true"
   FeatureFlagPostgresLambdaLayer: "true"
-  FeatureFlagCloudTrail: "true"
+  FeatureFlagCloudTrail: "false"
   FeatureFlagRah: "true"
 
   FlagAutouseCidashNotificationTopic: "true"
+

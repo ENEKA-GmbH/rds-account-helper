@@ -52,9 +52,17 @@ Parameters:
       - "false"
     Default: "false"
 
-  FeatureFlagPyMysqlLambdaLayer:
+  FeatureFlagMysqlLambdaLayer:
     Type: "String"
     Description: "Create pymysql lambda layer stack" 
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  FeatureFlagPostgresLambdaLayer:
+    Type: "String"
+    Description: "Create psycopg2 lambda layer stack" 
     AllowedValues:
       - "true"
       - "false"
@@ -76,7 +84,7 @@ Parameters:
       - "false"
     Default: "false"
 
-  FeatureFlagDbmgr:
+  FeatureFlagRah:
     Type: "String"
     Description: "Add a Custom CFN Resource that allowes to create additional Users on RDS Databases"
     AllowedValues:
@@ -92,10 +100,17 @@ Parameters:
       - "false"
     Default: "false"
 
-  PyMysqlLambdaLayerArn:
+  MysqlLambdaLayerArn:
     Type: "String"
     Default: "false"
-    Description: "ARN of PyMysql Lambda Layer. Only needed, if FeatureFlagPyMysqlLambdaLayer is false but FeatureFlagDbmgr is true"
+    Description: "ARN of Mysql Lambda Layer. Only needed, if FeatureFlagMysqlLambdaLayer is false but FeatureFlagRah is true"
+
+
+  PostgresLambdaLayerArn:
+    Type: "String"
+    Default: "false"
+    Description: "ARN of Postgres Lambda Layer. Only needed, if FeatureFlagPostgresLambdaLayer is false but FeatureFlagRah is true"
+
 
 Conditions:
 
@@ -125,10 +140,15 @@ Conditions:
       - "true"
       - !Ref "FeatureFlagSns2Slack"
 
-  FeatureFlagPyMysqlLambdaLayer:
+  FeatureFlagMysqlLambdaLayer:
     Fn::Equals:
       - "true"
-      - !Ref "FeatureFlagPyMysqlLambdaLayer"
+      - !Ref "FeatureFlagMysqlLambdaLayer"
+
+  FeatureFlagPostgresLambdaLayer:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagPostgresLambdaLayer"
 
   FeatureFlagCloudTrail:
     Fn::Equals:
@@ -140,26 +160,35 @@ Conditions:
       - "true"
       - !Ref "FeatureFlagAwsConfig"
 
-  FeatureFlagDbmgr:
+  FeatureFlagRah:
     Fn::Equals:
       - "true"
-      - !Ref "FeatureFlagDbmgr"
+      - !Ref "FeatureFlagRah"
 
   FeatureFlagCostCredential:
     Fn::Equals:
       - "true"
       - !Ref "FeatureFlagCostCredential"
 
-  PyMysqlDependencieDbmgr:
+  MysqlDependencieRah:
     Fn::And:
       - Fn::Equals:
-          - !Ref "FeatureFlagPyMysqlLambdaLayer"
+          - !Ref "FeatureFlagMysqlLambdaLayer"
           - "false"
       - Fn::Not:
           - Fn::Equals:
-              - !Ref "FeatureFlagDbmgr"
+              - !Ref "FeatureFlagRah"
               - "false"
 
+  PostgresDependencieRah:
+    Fn::And:
+      - Fn::Equals:
+          - !Ref "FeatureFlagPostgresLambdaLayer"
+          - "false"
+      - Fn::Not:
+          - Fn::Equals:
+              - !Ref "FeatureFlagRah"
+              - "false"
 Resources:
 
   CloudTrailStack:
@@ -226,7 +255,7 @@ Resources:
 
   Sns2SlackStack:
     Type: "AWS::CloudFormation::Stack"
-    Condition: FeatureFlagSns2Slack
+    Condition: "FeatureFlagSns2Slack"
     Properties: 
       NotificationARNs:
         - Fn::If:
@@ -257,10 +286,11 @@ Resources:
         Environment: !Ref "Environment"
         CfnNotificationTopicArn: !Ref "CfnNotificationTopicArn"
 
-  PyMysqlLambdaLayerStack:
+  PostgresLambdaLayerStack:
     Type: "AWS::CloudFormation::Stack"
-    Condition: "FeatureFlagPyMysqlLambdaLayer"
-    Properties: 
+    Condition: "FeatureFlagPostgresLambdaLayer"
+    Properties:
+      TimeoutInMinutes: 5
       NotificationARNs:
         - Fn::If:
             - "FlagNotify"
@@ -280,52 +310,150 @@ Resources:
                 - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
                 - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
             - !Ref "AWS::StackName"
-            - "stack/pymysql_lambdalayer.yml"
+            - "rah/infrastructure_as_code/cloudformation/lambda_layer.yml"
       Parameters:
-        MainStackName: !Ref "AWS::StackName"
-        SeedStackName: !Ref "SeedStackName"
-        Prefix: !Ref "Prefix"
-        Environment: !Ref "Environment"
-        UniqueExtension: !Ref "UniqueExtension"
-        ProjectSlug: !Ref "ProjectSlug"
-
-  DbmgrStack:
-    Type: "AWS::CloudFormation::Stack"
-    Condition: "FeatureFlagDbmgr"
-    Properties: 
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
-        Fn::Join:
-          - "/"
-          - - "https:/"
-            - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
-            - Fn::If:
-                - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
-            - !Ref "AWS::StackName"
-            - "stack/dbmgr.yml"
-      Parameters:
-        MainStackName: !Ref "AWS::StackName"
-        SeedStackName: !Ref "SeedStackName"
-        Prefix: !Ref "Prefix"
-        UniqueExtension: !Ref "UniqueExtension"
-        ProjectSlug: !Ref "ProjectSlug"
-        Environment: !Ref "Environment"
-        InfrastructureStackName: !Ref "InfrastructureStackName"
-        PyMysqlLambdaLayer:
+        LayerName: "postgresql-layer"
+        LayerS3BucketName:
+          Fn::ImportValue:
+            !Join [ ":", [ !Ref "SeedStackName", "SeedBucketName" ] ]
+        LayerS3BucketKey:
           Fn::If:
-            - "PyMysqlDependencieDbmgr"
-            - !Ref "PyMysqlLambdaLayerArn"
-            - !GetAtt "PyMysqlLambdaLayerStack.Outputs.PyMysqlLambdaLayerArn"
+            - "HasEnvironment"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "Environment"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/postgres-layer.zip"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/postgres-layer.zip"
+
+
+  MysqlLambdaLayerStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagMysqlLambdaLayer"
+    Properties:
+      TimeoutInMinutes: 5
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "rah/infrastructure_as_code/cloudformation/lambda_layer.yml"
+      Parameters:
+        LayerName: "mysql-layer"
+        LayerS3BucketName:
+          Fn::ImportValue:
+            !Join [ ":", [ !Ref "SeedStackName", "SeedBucketName" ] ]
+        LayerS3BucketKey:
+          Fn::If:
+            - "HasEnvironment"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "Environment"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/mysql-layer.zip"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/mysql-layer.zip"
+
+  RahStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagRah"
+    Properties: 
+      TimeoutInMinutes: 5
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue" 
+      TemplateURL: 
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "rah/infrastructure_as_code/cloudformation/cfn_custom_rah.yml"
+      Parameters:
+        LambdaS3BucketName:
+          Fn::ImportValue:
+            !Join [ ":", [ !Ref "SeedStackName", "SeedBucketName" ] ]
+        LambdaS3BucketKey:
+          Fn::If:
+            - "HasEnvironment"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "Environment"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/rah.zip"
+            - Fn::Join:
+                - "/"
+                - - !Ref "Prefix" 
+                  - !Ref "ProjectSlug"
+                  - !Ref "UniqueExtension"
+                  - !Ref "AWS::StackName"
+                  - "build/rah.zip"
+
+        MysqlLambdaLayerArn:
+          Fn::If:
+            - "MysqlDependencieRah"
+            - !Ref "MysqlLambdaLayerArn"
+            - !GetAtt "MysqlLambdaLayerStack.Outputs.LambdaLayerArn"
+        PostgresLambdaLayerArn:
+          Fn::If:
+            - "PostgresDependencieRah"
+            - !Ref "PostgresLambdaLayerArn"
+            - !GetAtt "PostgresLambdaLayerStack.Outputs.LambdaLayerArn"
+        VpcId:
+          Fn::ImportValue:
+            !Join [ ":", [ !Ref "InfrastructureStackName", "VpcId" ] ]
+        SubnetIds:
+          Fn::Join:
+            - ","
+            - - Fn::ImportValue:
+                  !Join [ ":", [ !Ref "InfrastructureStackName", "PrivateSubnetOne" ] ]
+              - Fn::ImportValue:
+                  !Join [ ":", [ !Ref "InfrastructureStackName", "PrivateSubnetTwo" ] ]
+
 
   CostCredentialStack:
     Type: "AWS::CloudFormation::Stack"
@@ -356,3 +484,19 @@ Resources:
         SeedStackName: !Ref "SeedStackName"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
+
+Outputs:
+
+  RahCustomCfnResourceArn:
+    Condition: "FeatureFlagRah"
+    Value: !GetAtt "RahStack.Outputs.CustomCfnResourceFunctionArn"
+    Export:
+      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "RahCustomCfnResourceArn" ] ]
+
+
+  RahSecurityGroupId:
+    Condition: "FeatureFlagRah"
+    Value: !GetAtt "RahStack.Outputs.SecurityGroupId"
+    Export:
+      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "RahSecurityGroupId" ] ] 
+

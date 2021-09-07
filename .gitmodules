@@ -1,0 +1,3 @@
+#[submodule "dbmgr"]
+#	path = dbmgr
+#	url = git@github.com:ENEKA-GmbH/rds-account-helper.git

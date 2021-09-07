@@ -70,47 +70,34 @@ init:
 
 validate: makefile_version_check
 	yamllint parameters/*.yml
-	for file in stack.yml stack/cloudtrail.yml stack/dbmgr.yml stack/sns2slack.yml stack/pymysql_lambdalayer.yml ; do \
+	for file in stack.yml stack/cloudtrail.yml stack/sns2slack.yml ; do \
 		cfn-lint $(VALIDATION_CFN_IGNORE) -t $(CURRENT_DIR)/$$file; \
 	done
+	make -C rah/ validate
 
-build: build-pymysql-layer build-dbmgr build-sns2slack
 
-build-pymysql-layer:
+build: build-rah 
+
+build-rah:
 	mkdir -p build/
-	docker run --rm -it -v "$(CURRENT_DIR)":/var/task amazonlinux:2 /bin/sh -c "yum install -y gcc python3-devel mariadb-devel mariadb mariadb-community-libs amazon-linux-extras python3 make jq awscli; pip3 install virtualenv; cd /var/task; make buildlayer-indocker; exit"
+	make -C rah/ build
+	cp -r rah/build/* ./build/
 
-buildlayer-indocker:
-	mkdir -p tmp/pymysql/python
-	cd tmp/pymysql; \
-	python3 -m virtualenv pymysqlvenv; \
-	( source pymysqlvenv/bin/activate; pip3 install PyMySql ); \
-	cp -r pymysqlvenv/lib/python*/site-packages/pymysql python; \
-	zip -r ../../build/pymysql-layer.zip ./python
-	rm -rf tmp/ 
-
-build-dbmgr:
-	mkdir -p build/
-	cd dbmgr/; zip -r ../build/dbmgr.zip ./*
-
-build-sns2slack:
-	mkdir -p build/
-	cd sns2slack/; zip -r ../build/sns2slack.zip ./*
 
 copy:
 	echo $(UPLOAD_PATH)
-	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" ./ s3://$(UPLOAD_PATH)
+	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" --exclude "**/node_modules/**" --exclude "**/__pycache__/**" ./ s3://$(UPLOAD_PATH)
 
 deploy: makefile_version_check build build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-deploy-only: build-parameter copy
+deploy-only: build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
 update: makefile_version_check build build-parameter validate copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
-update-only: makefile_version_check build-parameter copy
+update-only: makefile_version_check build-parameter validate copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
 remove: makefile_version_check makefile_version_check

@@ -8,6 +8,6 @@ Parameters:
   FeatureFlagSns2Slack: "false"
   FeatureFlagPyMysqlLambdaLayer: "true"
   FeatureFlagCloudTrail: "true"
-  FeatureFlagDbmgr: "true"
+  FeatureFlagRah: "true"
 
   FlagAutouseCidashNotificationTopic: "true"

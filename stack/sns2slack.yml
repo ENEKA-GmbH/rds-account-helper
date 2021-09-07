@@ -28,14 +28,9 @@ Parameters:
     Type: "String"
     Description: "String to make the resource naming unique"
 
-
   SeedStackName:
     Type: "String"
     Description: "Name of main-seed stack"
-
-  UniqueExtension:
-    Type: "String"
-    Description: "String to make the resource naming unique"
 
   CfnNotificationTopicArn:
     Type: "String"

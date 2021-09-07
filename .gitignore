@@ -4,3 +4,4 @@ parameter.json
 *.swp
 tmp/
 build/
+.idea/
