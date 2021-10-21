@@ -1,4 +1,4 @@
-name: CI
+name: Main
 
 # Enable Buildkit and let compose use it to speed up image building
 env:
@@ -7,12 +7,10 @@ env:
 
 on:
   pull_request:
-    branches: [ "master" ]
-    paths-ignore: [ "docs/**" ]
+    branches: [ "main" ]
 
   push:
-    branches: [ "master" ] 
-    paths-ignore: [ "docs/**" ]
+    branches: [ "main" ]
 
 
 jobs:
@@ -28,10 +26,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: 12
+          node-version: 14
       - name: Install dependencies
         run: npm ci
+
+      - name: "Install release dependencies"
+        run: make init
+
+      - name: Run a one-line script
+        run: make validate
+
       - name: Release
+        if: github.ref != 'refs/heads/staging'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release

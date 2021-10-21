@@ -69,11 +69,12 @@ init:
 
 
 validate: makefile_version_check
+# stack/cloudtrail.yml stack/sns2slack.yml
 	yamllint parameters/*.yml
-	for file in stack.yml stack/cloudtrail.yml stack/sns2slack.yml ; do \
+	for file in "stack.yml `find stack/ -type f  -name '*.yml'`" ; do \
+  		echo $$file; \
 		cfn-lint $(VALIDATION_CFN_IGNORE) -t $(CURRENT_DIR)/$$file; \
 	done
-	make -C rah/ validate
 
 
 build: build-rah 
