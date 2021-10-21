@@ -78,7 +78,7 @@ Parameters:
 
   FeatureFlagAwsConfig:
     Type: "String"
-    Description: "Activate AWS-Config Tracking"
+    Description: "DEPRECATED Activate AWS-Config Tracking"
     AllowedValues:
       - "true"
       - "false"
@@ -95,6 +95,14 @@ Parameters:
   FeatureFlagCostCredential:
     Type: "String"
     Description: "Creates Credentials for external Monitoring Systems that only allows to get Costs and Billing Information"
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  FeatureFlagNukeCredential:
+    Type: "String"
+    Description: "Creates Credentials for account nuking"
     AllowedValues:
       - "true"
       - "false"
@@ -169,6 +177,11 @@ Conditions:
     Fn::Equals:
       - "true"
       - !Ref "FeatureFlagCostCredential"
+
+  FeatureFlagNukeCredential:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagNukeCredential"
 
   MysqlDependencieRah:
     Fn::And:
@@ -484,6 +497,37 @@ Resources:
         SeedStackName: !Ref "SeedStackName"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
+
+  NukeCredentialStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagNukeCredential"
+    Properties:
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue"
+      TemplateURL:
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
+                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+            - !Ref "AWS::StackName"
+            - "stack/nuke_credential.yml"
+      Parameters:
+        MainStackName: !Ref "AWS::StackName"
+        SeedStackName: !Ref "SeedStackName"
+        UniqueExtension: !Ref "UniqueExtension"
+        ProjectSlug: !Ref "ProjectSlug"
+
 
 Outputs:
 

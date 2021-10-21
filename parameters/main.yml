@@ -5,10 +5,11 @@ Parameters:
   ProjectSlug: "main"
 
   FeatureFlagSns2Slack: "false"
-  FeatureFlagPyMysqlLambdaLayer: "false"
+  FeatureFlagMysqlLambdaLayer: "false"
   FeatureFlagCloudTrail: "false"
-  FeatureFlagDbmgr: "false"
+  FeatureFlagRah: "false"
   FeatureFlagCostCredential: "true"
+  FeatureFlagNukeCredential: "true"
   FeatureFlagAwsConfig: "true"
 
   FlagAutouseCidashNotificationTopic: "true"

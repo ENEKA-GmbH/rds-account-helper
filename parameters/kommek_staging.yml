@@ -6,7 +6,8 @@ Parameters:
   Environment: "staging"
   InfrastructureStackName: "eneka-kommek-staging-infrastructure-0000"
   FeatureFlagSns2Slack: "false"
-  FeatureFlagPyMysqlLambdaLayer: "true"
+  FeatureFlagPostgresLambdaLayer: "true"
+  FeatureFlagMysqlLambdaLayer: "true"
   FeatureFlagCloudTrail: "true"
   FeatureFlagRah: "true"
 
