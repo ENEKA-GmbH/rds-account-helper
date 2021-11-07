@@ -1,0 +1,23 @@
+---
+Parameters:
+  Prefix: "eneka"
+  EnvironmentName: "development"
+  ProjectSlug: "eep"
+  StackSlug: "account-service"
+  UniqueExtension: "0000"
+
+  # yamllint disable-line rule:line-length
+  InfrastructureNetworkStackName: "eneka-development-eep-infrastructure-network-0000"
+  RahSecurityGroupIds:
+    - "sg-0697ffc032f1facc5"
+  SeedStackName: "eneka-development-eep-seed-0000"
+
+
+  FeatureFlagSns2Slack: "false"
+  FeatureFlagMysqlLambdaLayer: "true"
+  FeatureFlagPostgresLambdaLayer: "true"
+  FeatureFlagCloudTrail: "true"
+  FeatureFlagRah: "true"
+  FeatureFlagRandomString: "true"
+
+  FlagAutouseCidashNotificationTopic: "true"

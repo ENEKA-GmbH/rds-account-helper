@@ -1,5 +1,5 @@
 {
-    "branches": ["master"],
+    "branches": ["master", "staging"],
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",
@@ -12,7 +12,7 @@
         [
             "@semantic-release/exec",
             {
-                "prepareCmd": "make VERSION=${nextRelease.version} set-version" 
+                "prepareCmd": "make VERSION=${nextRelease.version} set-version"
             }
         ],
         [
@@ -23,5 +23,4 @@
         ]
     ]
 }
-
 

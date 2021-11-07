@@ -1,38 +1,41 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Provides an initial Seed Bucket
+Description: Creates Account Services
 
 Parameters:
 
   Prefix:
     Type: "String"
-    Description: "Prefix for each Resource"
-  
+    Description: "Unique Identifier for the whole Project"
+
+  EnvironmentName:
+    Type: "String"
+    Description: "Name of Environment used deployment"
+
   ProjectSlug:
     Type: "String"
-    Description: "Name of Project"
+    Description: "Slug used for the whole Project"
+
+  StackSlug:
+    Type: "String"
+    Description: "Slug used for current STack"
 
   UniqueExtension:
     Type: "String"
-    Description: "String to make the resource naming unique"
+    Description: "this string can be used to prevent name collisions"
+    Default: "0000"
 
-  Environment:
-    Type: "String"
-    Description: "Environment for deployment"
-    Default: "false"
-    AllowedValues:
-      - "development"
-      - "staging"
-      - "production"
-      - "false"
-  
   SeedStackName:
     Type: "String"
     Description: "Name of main-seed stack"
 
-  InfrastructureStackName:
+  InfrastructureNetworkStackName:
     Type: "String"
     Description: "Name of Infrastructure Stack (that provides the network)"
     Default: "false"
+
+  RahSecurityGroupIds:
+    Type: "CommaDelimitedList"
+    Description: "Security Group from Database used in Rah"
 
   CfnNotificationTopicArn:
     Type: "String"
@@ -84,6 +87,14 @@ Parameters:
       - "false"
     Default: "false"
 
+  FeatureFlagRandomString:
+    Type: "String"
+    Description: "Adds a custom Cfn resource that allows to generate random strings"
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
   FeatureFlagCostCredential:
     Type: "String"
     Description: "Creates Credentials for external Monitoring Systems that only allows to get Costs and Billing Information"
@@ -118,7 +129,7 @@ Conditions:
     Fn::Not:
       - Fn::Equals:
           - "false"
-          - !Ref "Environment"
+          - !Ref "EnvironmentName"
 
   FlagNotify:
     Fn::Or:
@@ -159,6 +170,12 @@ Conditions:
     Fn::Equals:
       - "true"
       - !Ref "FeatureFlagRah"
+
+  FeatureFlagRandomString:
+    Fn::Equals:
+      - "true"
+      - !Ref "FeatureFlagRandomString"
+
 
   FeatureFlagCostCredential:
     Fn::Equals:
@@ -208,18 +225,18 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "stack/cloudtrail.yml"
       Parameters:
         Prefix: !Ref "Prefix"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
-        Environment: !Ref "Environment"
+        EnvironmentName: !Ref "EnvironmentName"
 
   Sns2SlackStack:
     Type: "AWS::CloudFormation::Stack"
@@ -238,11 +255,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "stack/sns2slack.yml"
       Parameters:
@@ -251,7 +268,7 @@ Resources:
         Prefix: !Ref "Prefix"
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
-        Environment: !Ref "Environment"
+        EnvironmentName: !Ref "EnvironmentName"
         CfnNotificationTopicArn: !Ref "CfnNotificationTopicArn"
 
   PostgresLambdaLayerStack:
@@ -272,11 +289,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "rah/infrastructure_as_code/cloudformation/lambda_layer.yml"
       Parameters:
@@ -289,16 +306,18 @@ Resources:
             - "HasEnvironment"
             - Fn::Join:
                 - "/"
-                - - !Ref "Prefix" 
+                - - !Ref "Prefix"
+                  - !Ref "EnvironmentName"
                   - !Ref "ProjectSlug"
-                  - !Ref "Environment"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/postgres-layer.zip"
             - Fn::Join:
                 - "/"
-                - - !Ref "Prefix" 
+                - - !Ref "Prefix"
                   - !Ref "ProjectSlug"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/postgres-layer.zip"
@@ -322,11 +341,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "rah/infrastructure_as_code/cloudformation/lambda_layer.yml"
       Parameters:
@@ -339,16 +358,18 @@ Resources:
             - "HasEnvironment"
             - Fn::Join:
                 - "/"
-                - - !Ref "Prefix" 
+                - - !Ref "Prefix"
+                  - !Ref "EnvironmentName"
                   - !Ref "ProjectSlug"
-                  - !Ref "Environment"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/mysql-layer.zip"
             - Fn::Join:
                 - "/"
-                - - !Ref "Prefix" 
+                - - !Ref "Prefix"
                   - !Ref "ProjectSlug"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/mysql-layer.zip"
@@ -371,11 +392,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "rah/infrastructure_as_code/cloudformation/cfn_custom_rah.yml"
       Parameters:
@@ -387,9 +408,10 @@ Resources:
             - "HasEnvironment"
             - Fn::Join:
                 - "/"
-                - - !Ref "Prefix" 
+                - - !Ref "Prefix"
+                  - !Ref "EnvironmentName"
                   - !Ref "ProjectSlug"
-                  - !Ref "Environment"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/rah.zip"
@@ -397,6 +419,7 @@ Resources:
                 - "/"
                 - - !Ref "Prefix" 
                   - !Ref "ProjectSlug"
+                  - !Ref "StackSlug"
                   - !Ref "UniqueExtension"
                   - !Ref "AWS::StackName"
                   - "build/rah.zip"
@@ -413,15 +436,15 @@ Resources:
             - !GetAtt "PostgresLambdaLayerStack.Outputs.LambdaLayerArn"
         VpcId:
           Fn::ImportValue:
-            !Join [ ":", [ !Ref "InfrastructureStackName", "VpcId" ] ]
+            !Sub "${InfrastructureNetworkStackName}:VpcId"
         SubnetIds:
           Fn::Join:
             - ","
             - - Fn::ImportValue:
-                  !Join [ ":", [ !Ref "InfrastructureStackName", "PrivateSubnetOne" ] ]
+                  !Sub "${InfrastructureNetworkStackName}:PrivateSubnetOne"
               - Fn::ImportValue:
-                  !Join [ ":", [ !Ref "InfrastructureStackName", "PrivateSubnetTwo" ] ]
-
+                  !Sub "${InfrastructureNetworkStackName}:PrivateSubnetTwo"
+        SecurityGroupIds: !Join [ ",", !Ref "RahSecurityGroupIds" ]
 
   CostCredentialStack:
     Type: "AWS::CloudFormation::Stack"
@@ -440,11 +463,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "stack/cost_credential.yml"
       Parameters:
@@ -470,11 +493,11 @@ Resources:
           - "/"
           - - "https:/"
             - Fn::ImportValue:
-                !Join [":", [ !Ref "SeedStackName", "SeedBucketDomainName"]]
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
             - Fn::If:
                 - "HasEnvironment"
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "Environment", !Ref "UniqueExtension" ]]
-                - !Join [ "/", [ !Ref "Prefix", !Ref "ProjectSlug", !Ref "UniqueExtension" ]]
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
             - !Ref "AWS::StackName"
             - "stack/nuke_credential.yml"
       Parameters:
@@ -483,19 +506,44 @@ Resources:
         UniqueExtension: !Ref "UniqueExtension"
         ProjectSlug: !Ref "ProjectSlug"
 
+  RandomStringStack:
+    Type: "AWS::CloudFormation::Stack"
+    Condition: "FeatureFlagRandomString"
+    Properties:
+      TimeoutInMinutes: 5
+      NotificationARNs:
+        - Fn::If:
+            - "FlagNotify"
+            - Fn::If:
+                - "FlagAutouseCidashNotificationTopic"
+                - !ImportValue "cidashTopicArn"
+                - !Ref "CfnNotificationTopicArn"
+            - !Ref "AWS::NoValue"
+      TemplateURL:
+        Fn::Join:
+          - "/"
+          - - "https:/"
+            - Fn::ImportValue:
+                !Join [ ":", [ !Ref "SeedStackName", "SeedBucketDomainName" ] ]
+            - Fn::If:
+                - "HasEnvironment"
+                - !Sub "${Prefix}/${EnvironmentName}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+                - !Sub "${Prefix}/${ProjectSlug}/${StackSlug}/${UniqueExtension}"
+            - !Ref "AWS::StackName"
+            - "stack/random_string.yml"
+
+
 
 Outputs:
+
+  RandomStringCustomCfnResourceArn:
+    Condition: "FeatureFlagRandomString"
+    Value: !GetAtt "RandomStringStack.Outputs.CustomCfnResourceFunctionArn"
+    Export:
+      Name: !Sub "${AWS::StackName}:RandomStringCustomCfnResourceArn"
 
   RahCustomCfnResourceArn:
     Condition: "FeatureFlagRah"
     Value: !GetAtt "RahStack.Outputs.CustomCfnResourceFunctionArn"
     Export:
-      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "RahCustomCfnResourceArn" ] ]
-
-
-  RahSecurityGroupId:
-    Condition: "FeatureFlagRah"
-    Value: !GetAtt "RahStack.Outputs.SecurityGroupId"
-    Export:
-      Name: !Join [ ":", [ !Ref "InfrastructureStackName", "RahSecurityGroupId" ] ] 
-
+      Name: !Sub "${AWS::StackName}:RahCustomCfnResourceArn"

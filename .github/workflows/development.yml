@@ -1,18 +1,12 @@
-name: General Tests
+name: Development Workflow
 
 on:
-
   push:
     branches:
-      - "feature/*"
-      - "bug/*"
-      - "hotfix/*"
-
+      - "development"
   pull_request:
     branches:
-      - "feature/*"
-      - "bug/*"
-      - "hotfix/*"
+      - "development"
 
 jobs:
 

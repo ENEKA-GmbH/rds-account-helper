@@ -15,14 +15,10 @@ Parameters:
     Type: "String"
     Description: "Name of Project"
 
-  Environment:
+  EnvironmentName:
     Type: "String"
     Description: "Environment for deployment"
-    AllowedValues:
-      - "development"
-      - "staging"
-      - "production"
-      - "false"
+
   
 Conditions:
 
@@ -30,7 +26,7 @@ Conditions:
     Fn::Not:
       - Fn::Equals:
           - "false"
-          - !Ref "Environment"
+          - !Ref "EnvironmentName"
 
 
 Resources:
@@ -67,7 +63,7 @@ Resources:
       LogGroupName:
         Fn::If:
           - "HasEnvironment"
-          - !Sub "${Prefix}/${ProjectSlug}/${Environment}/${UniqueExtension}/trail"
+          - !Sub "${Prefix}/${ProjectSlug}/${EnvironmentName}/${UniqueExtension}/trail"
           - !Sub "${Prefix}/${ProjectSlug}/${UniqueExtension}/trail"
       RetentionInDays: 7
       KmsKeyId: !GetAtt "LogKmsKey.Arn"
@@ -79,7 +75,7 @@ Resources:
       BucketName:
         Fn::If:
           - "HasEnvironment"
-          - !Sub "${Prefix}-${ProjectSlug}-${Environment}-account-service-trail-${UniqueExtension}"
+          - !Sub "${Prefix}-${ProjectSlug}-${EnvironmentName}-account-service-trail-${UniqueExtension}"
           - !Sub "${Prefix}-${ProjectSlug}-account-service-trail-${UniqueExtension}"
       BucketEncryption:
           ServerSideEncryptionConfiguration:

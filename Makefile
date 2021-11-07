@@ -6,7 +6,6 @@ ifndef VERBOSE
 .SILENT:
 endif
 
-NAME := account-service
 
 CURRENT_DIR = $(shell pwd)
 PARAMETER_FILE ?=
@@ -18,26 +17,28 @@ ifneq (, $(PARAM_CHECK))
 	UNIQUE_EXTENSION := $(shell yq -r '.Parameters.UniqueExtension' ./parameters/$(PARAMETER_FILE))
 	PREFIX := $(shell yq -r '.Parameters.Prefix' ./parameters/$(PARAMETER_FILE))
 	PROJECT_SLUG := $(shell yq -r '.Parameters.ProjectSlug' ./parameters/$(PARAMETER_FILE))
+	STACK_SLUG := $(shell yq -r '.Parameters.StackSlug' ./parameters/$(PARAMETER_FILE))
 	SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameters/$(PARAMETER_FILE))
 	SEED_BUCKET_NAME := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
-	ENVIRONMENT := $(shell yq -r '.Parameters | if has("Environment") then .Environment else "false" end' ./parameters/$(PARAMETER_FILE))
+	ENVIRONMENT := $(shell yq -r '.Parameters | if has("EnvironmentName") then .EnvironmentName else "false" end' ./parameters/$(PARAMETER_FILE))
 	CIDASH_TOPIC_ARN := $(shell aws cloudformation list-exports | jq -r '.Exports[] | select(.Name == "cidashTopicArn") | .Value' - )
 	NOTIFICATION_TOPIC_ARN ?= $(shell yq -r '.Parameters | if has("CfnNotificationTopicArn") then .CfnNotificationTopicArn else "$(CIDASH_TOPIC_ARN)" end' ./parameters/$(PARAMETER_FILE) )
 else
 	UNIQUE_EXTENSION :=
 	PREFIX :=
 	PROJECT_SLUG :=
-	ENVIRONMENT := 
+	STACK_SLUG :=
+	ENVIRONMENT :=
 	CIDASH_TOPIC_ARN :=
 	NOTIFICATION_TOPIC_ARN ?=
 endif
 
 ifeq ($(ENVIRONMENT), false)
-	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(NAME)-$(UNIQUE_EXTENSION)
-	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
+	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(STACK_SLUG)-$(UNIQUE_EXTENSION)
+	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(STACK_SLUG)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
 else
-	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(ENVIRONMENT)-$(NAME)-$(UNIQUE_EXTENSION)
-	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(PROJECT_SLUG)/$(ENVIRONMENT)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
+	STACK_NAME := $(PREFIX)-$(ENVIRONMENT)-$(PROJECT_SLUG)-$(STACK_SLUG)-$(UNIQUE_EXTENSION)
+	UPLOAD_PATH := $(SEED_BUCKET_NAME)/$(PREFIX)/$(ENVIRONMENT)/$(PROJECT_SLUG)/$(STACK_SLUG)/$(UNIQUE_EXTENSION)/$(STACK_NAME)
 endif
 
 
@@ -52,7 +53,7 @@ endif
 
 
 AWS_STACK_PARAMETER := --stack-name $(STACK_NAME) \
-	--template-body file://$(CURRENT_DIR)/stack.yml \
+	--template-body file://$(CURRENT_DIR)/stack.cfn.yml \
 	--parameters file://$(CURRENT_DIR)/parameter.json $(NOTIFICATION_PARAMETER) \
 	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
 
@@ -71,13 +72,13 @@ init:
 validate: makefile_version_check
 # stack/cloudtrail.yml stack/sns2slack.yml
 	yamllint parameters/*.yml
-	for file in "stack.yml `find stack/ -type f  -name '*.yml'`" ; do \
+	for file in "`find ./ -type f  -name '*.cfn.yml'`" ; do \
   		echo $$file; \
 		cfn-lint $(VALIDATION_CFN_IGNORE) -t $(CURRENT_DIR)/$$file; \
 	done
 
 
-build: build-rah 
+build: build-rah
 
 build-rah:
 	mkdir -p build/
@@ -87,7 +88,7 @@ build-rah:
 
 copy:
 	echo $(UPLOAD_PATH)
-	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" --exclude "**/node_modules/**" --exclude "**/__pycache__/**" ./ s3://$(UPLOAD_PATH)
+	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" --exclude ".idea/**" --exclude "**/node_modules/**" --exclude "**/__pycache__/**" ./ s3://$(UPLOAD_PATH)
 
 deploy: makefile_version_check build build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
