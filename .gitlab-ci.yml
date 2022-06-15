@@ -1,6 +1,9 @@
 image: firecyberice/docker-toolbox:latest
 stages:
   - manual
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 
 before_script:
   - pip3 install boto3
