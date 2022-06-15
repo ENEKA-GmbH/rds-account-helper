@@ -28,6 +28,8 @@ deploy-development:account-service:
     ENVIRONMENT_NAME: "DEVELOPMENT"
   services:
     - docker:dind
+  before_script:
+    - apk add zip
   script:
     - make deploy STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
   artifacts:
