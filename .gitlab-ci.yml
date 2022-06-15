@@ -9,7 +9,7 @@ variables:
 
 
 
-before_script:
+before_script: &beforescript
   - pip3 install boto3
   - curl -v -L -o /usr/bin/yq https://github.com/mikefarah/yq/releases/download/v4.22.1/yq_linux_amd64
   - chmod  a+x /usr/bin/yq
@@ -28,7 +28,7 @@ deploy-development:account-service:
     ENVIRONMENT_NAME: "DEVELOPMENT"
   services:
     - docker:dind
-  before_script:
+  before_script: *beforescript
     - apk add zip
   script:
     - make deploy STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
