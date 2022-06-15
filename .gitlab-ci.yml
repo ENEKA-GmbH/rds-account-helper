@@ -27,13 +27,27 @@ deploy-development:account-service:
     AWS_SECRET_ACCESS_KEY: $AWS_ENK_DEVELOPMENT_ACCOUNT_SERVICE_AWS_SECRET_ACCESS_KEY
     AWS_ROLE_ARN: $AWS_ENK_DEVELOPMENT_ACCOUNT_SERVICE_AWS_ROLE_ARN
     ENVIRONMENT_NAME: "DEVELOPMENT"
+  cache:
+    untracked: true
+    policy: pull-push
+    paths:
+      - build/*
+      - .cache_exists
+    key: rah-build
   services:
     - docker:dind
   script:
-    - make deploy STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
+    - |
+      if [ -f .cache_exists ]; then
+        make deploy-only STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
+      else
+        make deploy STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
+      fi
   artifacts:
     reports:
       dotenv: build.env
+    paths:
+      - build/*
   environment:
     name: development/account-service
     action: start
