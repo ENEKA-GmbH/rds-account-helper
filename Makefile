@@ -1,37 +1,29 @@
-MAKEFILE_VERSION := 2021-08-17--01
-MAKEFILE_VERSION_CHECK := yes
-REMOTE_VERSION := $(shell curl -s "https://gist.githubusercontent.com/eieste/3c421b77254895ebfc516d493c06518a/raw/VERSION")
-
-ifndef VERBOSE
-.SILENT:
-endif
-
-
-CURRENT_DIR = $(shell pwd)
-PARAMETER_FILE ?=
-PARAM_CHECK ?= $(PARAMETER_FILE)
-
+CURRENT_DIR := $(shell pwd)
 VALIDATION_CFN_IGNORE := -i W2001
 
-ifneq (, $(PARAM_CHECK))
-	UNIQUE_EXTENSION := $(shell yq -r '.Parameters.UniqueExtension' ./parameters/$(PARAMETER_FILE))
-	PREFIX := $(shell yq -r '.Parameters.Prefix' ./parameters/$(PARAMETER_FILE))
-	PROJECT_SLUG := $(shell yq -r '.Parameters.ProjectSlug' ./parameters/$(PARAMETER_FILE))
-	STACK_SLUG := $(shell yq -r '.Parameters.StackSlug' ./parameters/$(PARAMETER_FILE))
-	SEED_STACK_NAME := $(shell yq -r .Parameters.SeedStackName  ./parameters/$(PARAMETER_FILE))
-	SEED_BUCKET_NAME := $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
-	ENVIRONMENT := $(shell yq -r '.Parameters | if has("EnvironmentName") then .EnvironmentName else "false" end' ./parameters/$(PARAMETER_FILE))
-	CIDASH_TOPIC_ARN := $(shell aws cloudformation list-exports | jq -r '.Exports[] | select(.Name == "cidashTopicArn") | .Value' - )
-	NOTIFICATION_TOPIC_ARN ?= $(shell yq -r '.Parameters | if has("CfnNotificationTopicArn") then .CfnNotificationTopicArn else "$(CIDASH_TOPIC_ARN)" end' ./parameters/$(PARAMETER_FILE) )
-else
-	UNIQUE_EXTENSION :=
-	PREFIX :=
-	PROJECT_SLUG :=
-	STACK_SLUG :=
-	ENVIRONMENT :=
-	CIDASH_TOPIC_ARN :=
-	NOTIFICATION_TOPIC_ARN ?=
+ifndef STACK_DIR
+$(error STACK_DIR is not set)
 endif
+
+ifndef PARAMETER_FILE
+$(error PARAMETER_FILE is not set)
+endif
+
+DATE := $(shell date '+%d-%m-%Y--%H-%M-%S');
+
+PREFIX := $(shell yq e '.Parameters.Prefix' $(PARAMETER_FILE))
+ENVIRONMENT := $(shell yq e '.Parameters.EnvironmentName' $(PARAMETER_FILE))
+
+PROJECT_SLUG := $(shell yq e '.Parameters.ProjectSlug' $(PARAMETER_FILE))
+STACK_SLUG := $(shell yq e '.Parameters.StackSlug' $(PARAMETER_FILE))
+UNIQUE_EXTENSION := $(shell yq e '.Parameters.UniqueExtension' $(PARAMETER_FILE))
+
+SEED_STACK_NAME = $(shell yq e .Parameters.SeedStackName $(PARAMETER_FILE))
+SEED_BUCKET_NAME = $(shell aws cloudformation describe-stacks --stack-name $(SEED_STACK_NAME) | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "SeedBucketName").OutputValue')
+
+STACK_NAME := $(PREFIX)-$(ENVIRONMENT)-$(PROJECT_SLUG)-$(STACK_SLUG)-$(UNIQUE_EXTENSION)
+
+
 
 ifeq ($(ENVIRONMENT), false)
 	STACK_NAME := $(PREFIX)-$(PROJECT_SLUG)-$(STACK_SLUG)-$(UNIQUE_EXTENSION)
@@ -42,40 +34,25 @@ else
 endif
 
 
-.SILENT:
 
-
-ifeq ($(NOTIFICATION_TOPIC_ARN), )
-	NOTIFICATION_PARAEMETER :=
-else
-	NOTIFICATION_PARAMETER := --notification-arns $(NOTIFICATION_TOPIC_ARN)
-endif
 
 
 AWS_STACK_PARAMETER := --stack-name $(STACK_NAME) \
 	--template-body file://$(CURRENT_DIR)/stack.cfn.yml \
-	--parameters file://$(CURRENT_DIR)/parameter.json $(NOTIFICATION_PARAMETER) \
+	--parameters file://$(CURRENT_DIR)/parameter.json \
 	--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
-
-makefile_version_check:
-ifeq ($(MAKEFILE_VERSION_CHECK), yes)
-ifneq ($(MAKEFILE_VERSION), $(REMOTE_VERSION))
-	@echo "Remote Version ( $(REMOTE_VERSION) ) doesnt match with Local Version ( $(MAKEFILE_VERSION) )"
-endif
-endif
 
 init:
 	npm install -y
 	./node_modules/.bin/husky install
 
 
-validate: makefile_version_check
-# stack/cloudtrail.yml stack/sns2slack.yml
+validate:
 	yamllint parameters/*.yml
-	for file in "`find ./ -type f  -name '*.cfn.yml'`" ; do \
-  		echo $$file; \
+	for file in $(find ./ -type f -iname "*.cfn.yml") ; do \
 		cfn-lint $(VALIDATION_CFN_IGNORE) -t $(CURRENT_DIR)/$$file; \
 	done
+	# aws cloudformation validate-template --template-body file://$(CURRENT_DIR)/$$file --output text
 
 
 build: build-rah
@@ -85,39 +62,43 @@ build-rah:
 	make -C rah/ build
 	cp -r rah/build/* ./build/
 
-
 copy:
 	echo $(UPLOAD_PATH)
 	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" --exclude ".idea/**" --exclude "**/node_modules/**" --exclude "**/__pycache__/**" ./ s3://$(UPLOAD_PATH)
 
-deploy: makefile_version_check build build-parameter validate copy
+deploy: build build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
 deploy-only: build-parameter validate copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-update: makefile_version_check build build-parameter validate copy
+update: build build-parameter validate copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
-update-only: makefile_version_check build-parameter validate copy
+update-only: build-parameter validate copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
-remove: makefile_version_check makefile_version_check
+remove:
 	aws cloudformation delete-stack --stack-name $(STACK_NAME)
 
-update-lambda: makefile_version_check build-sns2slack
+update-lambda: build-sns2slack
 	aws lambda update-function-code --zip-file fileb://$(CURRENT_DIR)/sns2slack.zip --function-name $(LAMBDA_NAME)
+#
+#build-parameter:
+#	cat parameters/$(PARAMETER_FILE) | \
+#	       	yq .Parameters | \
+#		jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' | \
+#	       	tee parameter.json
 
-build-parameter: makefile_version_check
-	cat parameters/$(PARAMETER_FILE) | \
-	       	yq .Parameters | \
-		jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' | \
-	       	tee parameter.json
+build-parameter:
+	# yq ea  "select(fileIndex == 0) * select(fileIndex == 1)" $(PARAMETER_FILE) $(CURRENT_DIR)/global.parameter.yml | \
+	yq ea -o json '.Parameters' $(PARAMETER_FILE) | \
+	jq '[ . | to_entries | .[] | { "ParameterKey": .key, "ParameterValue": .value| (if type == "array" then join(",") else . end)  } ]' | \
+	tee $(STACK_DIR)/parameter.json
 
-set-version: makefile_version_check
+set-version:
 	npm  --no-git version --allow-same-version --no-git --no-git-tag-version $(VERSION)
 	echo $(VERSION) > VERSION
-
 
 clean:
 	rm -Rf tmp/

@@ -1,0 +1,29 @@
+image: firecyberice/docker-toolbox:latest
+stages:
+  - manual
+
+before_script:
+  - pip3 install boto3
+  - curl -v -L -o /usr/bin/yq https://github.com/mikefarah/yq/releases/download/v4.22.1/yq_linux_amd64
+  - chmod  a+x /usr/bin/yq
+  - eval $(aws sts assume-role --role-arn ${AWS_ROLE_ARN} --role-session-name cipipeline | jq -r '.Credentials | "export AWS_ACCESS_KEY_ID=\(.AccessKeyId)\nexport AWS_SECRET_ACCESS_KEY=\(.SecretAccessKey)\nexport AWS_SESSION_TOKEN=\(.SessionToken)\n"')
+
+deploy-development:account-service:
+  stage: manual
+  when: manual
+  variables:
+    AWS_DEFAULT_REGION: eu-central-1
+    DEFAULT_ECS_CLUSTER: eep-infrastructure-ecs-ec2-cluster
+    SCOPE: "ACCOUNT_SERVICE_"
+    AWS_ACCESS_KEY_ID: $AWS_ENK_DEVELOPMENT_ACCOUNT_SERVICE_AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY: $AWS_ENK_DEVELOPMENT_ACCOUNT_SERVICE_AWS_SECRET_ACCESS_KEY
+    AWS_ROLE_ARN: $AWS_ENK_DEVELOPMENT_ACCOUNT_SERVICE_AWS_ROLE_ARN
+    ENVIRONMENT_NAME: "DEVELOPMENT"
+  script:
+    - make deploy STACK_DIR=$(pwd)/ PARAMETER_FILE=$(printenv "AWS_ENK_${ENVIRONMENT_NAME^^}_${SCOPE^^}PARAMETER_FILE")
+  artifacts:
+    reports:
+      dotenv: build.env
+  environment:
+    name: development/account-service
+    action: start

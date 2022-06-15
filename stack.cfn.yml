@@ -131,16 +131,6 @@ Conditions:
           - "false"
           - !Ref "EnvironmentName"
 
-  FlagNotify:
-    Fn::Or:
-      - Fn::Not:
-          - Fn::Equals:
-              - "false"
-              - !Ref "CfnNotificationTopicArn"
-      - Fn::Equals:
-          - "true"
-          - !Ref "FlagAutouseCidashNotificationTopic"
-
   FlagAutouseCidashNotificationTopic:
     Fn::Equals:
       - "true"
@@ -212,15 +202,7 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagCloudTrail"
     Properties:
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -242,15 +224,7 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagSns2Slack"
     Properties: 
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -276,15 +250,7 @@ Resources:
     Condition: "FeatureFlagPostgresLambdaLayer"
     Properties:
       TimeoutInMinutes: 5
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -328,15 +294,7 @@ Resources:
     Condition: "FeatureFlagMysqlLambdaLayer"
     Properties:
       TimeoutInMinutes: 5
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -379,15 +337,7 @@ Resources:
     Condition: "FeatureFlagRah"
     Properties: 
       TimeoutInMinutes: 5
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -450,15 +400,7 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagCostCredential"
     Properties: 
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue" 
-      TemplateURL: 
+      TemplateURL:
         Fn::Join:
           - "/"
           - - "https:/"
@@ -480,14 +422,6 @@ Resources:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagNukeCredential"
     Properties:
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue"
       TemplateURL:
         Fn::Join:
           - "/"
@@ -511,14 +445,6 @@ Resources:
     Condition: "FeatureFlagRandomString"
     Properties:
       TimeoutInMinutes: 5
-      NotificationARNs:
-        - Fn::If:
-            - "FlagNotify"
-            - Fn::If:
-                - "FlagAutouseCidashNotificationTopic"
-                - !ImportValue "cidashTopicArn"
-                - !Ref "CfnNotificationTopicArn"
-            - !Ref "AWS::NoValue"
       TemplateURL:
         Fn::Join:
           - "/"

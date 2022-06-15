@@ -9,7 +9,7 @@ Parameters:
   # yamllint disable-line rule:line-length
   InfrastructureNetworkStackName: "eneka-development-eep-infrastructure-network-0000"
   RahSecurityGroupIds:
-    - "sg-0697ffc032f1facc5"
+    - "sg-03027d010608d3ea2"
   SeedStackName: "eneka-development-eep-seed-0000"
 
 
