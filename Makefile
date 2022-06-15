@@ -66,16 +66,16 @@ copy:
 	echo $(UPLOAD_PATH)
 	aws s3 sync --exclude ".git/**" --exclude "node_modules/**" --exclude ".idea/**" --exclude "**/node_modules/**" --exclude "**/__pycache__/**" ./ s3://$(UPLOAD_PATH)
 
-deploy: build build-parameter validate copy
+deploy: build build-parameter copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-deploy-only: build-parameter validate copy
+deploy-only: build-parameter copy
 	aws cloudformation create-stack $(AWS_STACK_PARAMETER)
 
-update: build build-parameter validate copy
+update: build build-parameter copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
-update-only: build-parameter validate copy
+update-only: build-parameter copy
 	aws cloudformation update-stack $(AWS_STACK_PARAMETER)
 
 remove:
