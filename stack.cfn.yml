@@ -198,6 +198,60 @@ Conditions:
               - "false"
 Resources:
 
+  SecretKmsKey:
+    Type: "AWS::KMS::Key"
+    Properties:
+      Description: "KMS key for all Cloudwatch purposes"
+      Enabled: true
+      EnableKeyRotation: false
+      KeyPolicy:
+        Statement:
+          - Effect: "Allow"
+            Principal: "*"
+            Resource: "*"
+            Action:
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:DescribeKey"
+          - Effect: "Allow"
+            Resource: "*"
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+          - Effect: "Allow"
+            Resource: "*"
+            Principal:
+              Service:
+                - "ecs.amazonaws.com"
+            Action:
+              - "kms:*"
+
+  ExternalDockerRegistrySecret:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Description: "Credentials for an external Docker Image Registry"
+      KmsKeyId: !GetAtt "SecretKmsKey.Arn"
+      Name:
+        Fn::Join:
+          - "/"
+          - - ""
+            - !Ref "Prefix"
+            - !Ref "EnvironmentName"
+            - "docker"
+      SecretString: !Sub |
+          {
+            "username": "",
+            "password": ""
+          }
+
+
+
+
+
   CloudTrailStack:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagCloudTrail"
@@ -473,3 +527,9 @@ Outputs:
     Value: !GetAtt "RahStack.Outputs.CustomCfnResourceFunctionArn"
     Export:
       Name: !Sub "${AWS::StackName}:RahCustomCfnResourceArn"
+
+  ExternalDockerRegistrySecretArn:
+    Value: !Ref "ExternalDockerRegistrySecret"
+    Description: "Secret arn which can be used for external docker registry login"
+    Export:
+      Name: !Sub "${AWS::StackName}:ExternalDockerRegistrySecretArn"
