@@ -34,9 +34,6 @@ else
 endif
 
 
-
-
-
 AWS_STACK_PARAMETER := --stack-name $(STACK_NAME) \
 	--template-body file://$(CURRENT_DIR)/stack.cfn.yml \
 	--parameters file://$(CURRENT_DIR)/parameter.json \

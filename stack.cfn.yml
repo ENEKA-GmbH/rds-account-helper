@@ -248,10 +248,6 @@ Resources:
             "password": ""
           }
 
-
-
-
-
   CloudTrailStack:
     Type: "AWS::CloudFormation::Stack"
     Condition: "FeatureFlagCloudTrail"
@@ -533,3 +529,9 @@ Outputs:
     Description: "Secret arn which can be used for external docker registry login"
     Export:
       Name: !Sub "${AWS::StackName}:ExternalDockerRegistrySecretArn"
+
+  SecretKmsKeyArn:
+    Value: !GetAtt "SecretKmsKey.Arn"
+    Description: "KMS key which are used to encrypt external docker registry"
+    Export:
+      Name: !Sub "${AWS::StackName}:SecretKmsKeyArn"
